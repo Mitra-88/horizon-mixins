@@ -1,0 +1,17 @@
+# Illustrative manifest; loader does not exist yet.
+[mod]
+id = "better-movement"
+version = "0.1.0"
+priority = 100
+
+[compatibility]
+horizon_revision = "PINNED_COMMIT_SHA"
+
+[[injection]]
+id = "before-friction"
+target = "horizon_client::entity::update_velocity"
+kind = "BEFORE_CALL"
+selector = "entity.apply_friction"
+ordinal = 0
+require = 1
+helper = "better_movement::before_friction"
