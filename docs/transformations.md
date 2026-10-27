@@ -68,7 +68,7 @@ Value modifiers use a scoped function-item callee with original values as
 ordinary call arguments, avoiding an added block around original expressions.
 Operation wrappers use typed, generated FnOnce continuations. Return modifiers
 run on explicit exits, implicit tails and cancelled HEAD results; generated
-helper/continuation returns are not revisited. Current schema-4 plans store
+helper/continuation returns are not revisited. Current schema-5 plans store
 value/output contracts, argument indices and original constant coordinates,
 plus lexical/access identities, captures, resolved regions and bridge metadata.
 Regenerate older plans after upgrading.
@@ -95,3 +95,15 @@ and `E_ARGUMENT_SIGNATURE` diagnose value/tuple contracts. `E_SLICE_*` errors
 describe invalid boundaries, scopes and order; `E_BRIDGE_TARGET` and
 `E_BRIDGE_CONFLICT` describe unsupported owners/signatures and name collisions.
 Rust type, lifetime, borrowing and move errors still come from staged Cargo.
+
+Version 0.5.0 adds [effects and state](effects-and-state.md). Typed AFTER_CALL
+adapters observe the original result before consumption; AFTER_ASSIGN statements
+run after its store and temporary destruction. Expression-value modifiers run
+after call adapters and before STORE modifiers. Interior cancellation rewrites
+to a real target return, including RETURN processing and ordinary Rust drops.
+Original struct literals receive deterministically ordered state initializers;
+struct fields and accessors are added after body rewrites. `E_AFTER_RESULT`
+diagnoses invalid result borrow contracts; `E_STATE` diagnoses unsupported owner,
+constructor, initialization and pattern cases; `E_STATE_CONFLICT` rejects
+namespaced collisions and OVERWRITE removing a constructor. Cargo checks types,
+moves, derives, serialization and any constructions hidden behind aliases/macros.

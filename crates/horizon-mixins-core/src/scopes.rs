@@ -30,6 +30,7 @@ pub struct Context {
     pub block: usize,
     pub depth: usize,
     pub constant: bool,
+    pub place: bool,
 }
 #[derive(Debug, Clone)]
 pub struct VariableSite {
@@ -99,6 +100,7 @@ pub struct Scopes {
     pub contexts: Vec<Context>,
     pub accesses: Vec<VariableSite>,
     pub returns: Vec<usize>,
+    pub after_assign: BTreeMap<usize, Context>,
     pub end: Option<Context>,
     frames: Vec<(usize, BTreeMap<String, usize>)>,
     next_block: usize,
@@ -150,6 +152,7 @@ impl Scopes {
             block: self.frames.last().map_or(0, |f| f.0),
             depth: self.frames.len() - 1,
             constant: self.constant,
+            place: self.place,
         }
     }
     fn push(&mut self) {
@@ -290,8 +293,12 @@ impl<'ast> Visit<'ast> for Scopes {
         if let syn::Stmt::Local(local) = stmt {
             let fingerprint = source::fingerprint(tokens(local));
             let ids = self.add_pattern(&local.pat, true, &fingerprint);
+            let mut call = None;
             if let Some(init) = &local.init {
                 let expression = self.contexts.len();
+                if sites::plain_pattern(&local.pat) && init.diverge.is_none() {
+                    call = sites::root_call(&init.expr, expression);
+                }
                 self.visit_expr(&init.expr);
                 for id in &ids {
                     self.accesses.push(VariableSite {
@@ -307,8 +314,21 @@ impl<'ast> Visit<'ast> for Scopes {
                 }
             }
             self.expose(&ids);
+            if let Some(call) = call {
+                self.after_assign.insert(call, self.context());
+            }
         } else {
+            let expression = self.contexts.len();
             visit::visit_stmt(self, stmt);
+            if let syn::Stmt::Expr(Expr::Assign(e), Some(_)) = stmt
+                && matches!(&*e.left,Expr::Path(p) if p.path.segments.len()==1)
+            {
+                // Assignment visits its LHS before its RHS in all shared traversals.
+                let left_count = expression_count(&e.left);
+                if let Some(call) = sites::root_call(&e.right, expression + 1 + left_count) {
+                    self.after_assign.insert(call, self.context());
+                }
+            }
         }
     }
     fn visit_expr_if(&mut self, e: &'ast syn::ExprIf) {
@@ -559,4 +579,9 @@ pub fn resolve_bindings(
     }
     let _ = f;
     Ok(captures)
+}
+
+fn expression_count(expr: &Expr) -> usize {
+    let block: syn::Block = syn::parse_quote!({ #expr });
+    sites::Sites::in_block(&block).expressions
 }

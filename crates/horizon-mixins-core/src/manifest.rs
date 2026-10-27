@@ -15,6 +15,25 @@ pub struct Manifest {
     pub bridge: Vec<Bridge>,
     #[serde(default)]
     pub module: Vec<Module>,
+    #[serde(default)]
+    pub state: Vec<State>,
+}
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct State {
+    pub id: String,
+    pub target: String,
+    pub ty: String,
+    pub initial: String,
+    pub priority: Option<i32>,
+    pub constructor: Vec<Constructor>,
+}
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Constructor {
+    pub target: String,
+    pub selector: String,
+    pub require: usize,
 }
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -49,16 +68,28 @@ pub enum Kind {
     WrapOperation,
     ModifyArgs,
     ModifyVariable,
+    ModifyExpressionValue,
+    AfterCall,
+    AfterAssign,
 }
 impl Kind {
     pub fn selects_call(self) -> bool {
         matches!(
             self,
-            Self::BeforeCall | Self::ModifyArg | Self::ModifyArgs | Self::WrapOperation
+            Self::BeforeCall
+                | Self::AfterCall
+                | Self::AfterAssign
+                | Self::ModifyArg
+                | Self::ModifyArgs
+                | Self::WrapOperation
         )
     }
     pub fn selects_site(self) -> bool {
-        self.selects_call() || matches!(self, Self::ModifyConstant | Self::ModifyVariable)
+        self.selects_call()
+            || matches!(
+                self,
+                Self::ModifyConstant | Self::ModifyVariable | Self::ModifyExpressionValue
+            )
     }
 }
 #[derive(Debug, Clone, Deserialize)]
@@ -187,11 +218,12 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
             || manifest.info.version.is_empty()
             || (manifest.injection.is_empty()
                 && manifest.bridge.is_empty()
-                && manifest.module.is_empty())
+                && manifest.module.is_empty()
+                && manifest.state.is_empty())
         {
             return Err(fail(
                 "E_MANIFEST",
-                "mod needs an ASCII id, a version and at least one injection, bridge or module"
+                "mod needs an ASCII id, a version and at least one injection, bridge, module or state"
                     .into(),
             ));
         }
@@ -204,6 +236,14 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
         let mut injections = BTreeSet::new();
         let mut helpers = Vec::new();
         let mut modules = Vec::new();
+        for state in &manifest.state {
+            if !valid_id(&state.id) || !injections.insert(&state.id) {
+                return Err(fail(
+                    "E_DUPLICATE_ID",
+                    format!("invalid or duplicate state id '{}'", state.id),
+                ));
+            }
+        }
         for module in &manifest.module {
             if !valid_id(&module.id) || !injections.insert(&module.id) {
                 return Err(fail(
@@ -236,10 +276,15 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
                     format!("invalid or duplicate injection id '{}'", injection.id),
                 )));
             }
-            if injection.cancellable && injection.kind != Kind::Head {
+            if injection.cancellable
+                && !matches!(
+                    injection.kind,
+                    Kind::Head | Kind::BeforeCall | Kind::AfterCall | Kind::AfterAssign
+                )
+            {
                 return Err(context(fail(
                     "E_MANIFEST",
-                    "cancellable is supported only for HEAD".into(),
+                    "cancellable requires HEAD, BEFORE_CALL, AFTER_CALL or AFTER_ASSIGN".into(),
                 )));
             }
             if (injection.kind == Kind::ModifyArg) != injection.argument.is_some() {
@@ -254,10 +299,12 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
                     "variable is required only for MODIFY_VARIABLE".into(),
                 )));
             }
-            if (injection.kind == Kind::ModifyArgs) != injection.result.is_some() {
+            if matches!(injection.kind, Kind::ModifyArgs | Kind::AfterCall)
+                != injection.result.is_some()
+            {
                 return Err(context(fail(
                     "E_ARGUMENT_SIGNATURE",
-                    "result is required only for MODIFY_ARGS".into(),
+                    "result is required only for MODIFY_ARGS and AFTER_CALL".into(),
                 )));
             }
             if injection.kind.selects_site() {

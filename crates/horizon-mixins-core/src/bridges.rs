@@ -42,7 +42,7 @@ pub fn item<'a>(items: &'a [Item], node: &[usize]) -> Result<&'a Item> {
         "bridge parent is not an inline module",
     ))
 }
-fn owner<'a>(index: &'a Index, id: &str) -> Result<&'a TypeDefinition> {
+pub(crate) fn owner<'a>(index: &'a Index, id: &str) -> Result<&'a TypeDefinition> {
     if index
         .blocked
         .iter()
@@ -96,7 +96,7 @@ fn owner<'a>(index: &'a Index, id: &str) -> Result<&'a TypeDefinition> {
     }
     Ok(ty)
 }
-fn type_id(module: &str, ty: &Type) -> Result<String> {
+pub(crate) fn type_id(module: &str, ty: &Type) -> Result<String> {
     let Type::Path(p) = ty else {
         return Err(Diagnostic::new(
             "E_BRIDGE_TARGET",

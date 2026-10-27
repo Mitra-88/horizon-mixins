@@ -1,6 +1,6 @@
 # Lifetime methods, boundary HEAD hooks and support modules (0.4.0)
 
-Veinminer is the first full-game consumer of this extension. Plans use schema 4;
+Veinminer is the first full-game consumer of this extension. Plans use schema 5;
 regenerate older plans. It declares three cancellable HEAD injections and one
 support module. All changes to the exported Horizon Rust source are performed
 by the mixin planner/transformer and atomic staging CLI.

@@ -2,9 +2,10 @@
 
 A working stable-Rust CLI for deterministic, build-time source mixins for
 [Horizon](https://github.com/ludovic111/horizon). The MVP implements declarative
-TOML mods, HEAD (including cancellation), BEFORE_CALL, RETURN, MODIFY_ARG,
+TOML mods, HEAD and interior cancellation, BEFORE_CALL, AFTER_CALL, AFTER_ASSIGN,
+MODIFY_EXPRESSION_VALUE, RETURN, MODIFY_ARG,
 MODIFY_ARGS, MODIFY_CONSTANT, MODIFY_VARIABLE, WRAP_OPERATION, OVERWRITE,
-lexical local capture, slices, accessor/invoker bridges, JSON planning and atomic
+lexical local capture, slices, accessor/invoker bridges, per-instance state, JSON planning and atomic
 Linux staging. Native mods run with your user privileges.
 
 ```text
@@ -103,7 +104,7 @@ cargo run --locked -p horizon-mixins-cli -- check \
 ```
 
 The [scoped injection and bridge guide](docs/scopes-and-bridges.md) documents
-the exact contracts and limits. Plans use schema 4; regenerate older plans.
+the exact contracts and limits. Plans use schema 5; regenerate older plans.
 
 Validate the implementation:
 
@@ -115,7 +116,7 @@ cargo test --workspace --locked
 python3 tools/benchmark.py # fresh target/benchmark; use --out for another run
 ```
 
-The 48-test integration suite includes generated source/plan snapshots, positive and
+The 64-test integration suite includes generated source/plan snapshots, positive and
 negative compilation, deterministic ordering, immutable originals, stale-source
 rejection, concurrent checks, and unchanged mtimes. Linux CI runs the same checks.
 
@@ -136,7 +137,7 @@ Further documentation: [API](docs/mixin-api.md),
 [transformations](docs/transformations.md), [architecture](docs/architecture.md),
 [staging and cache](docs/build-and-cache.md), [security](docs/security.md),
 [roadmap](docs/roadmap.md), [feasibility and measurements](docs/implementation.md).
-Additional injection kinds, structural mixins, launcher integration, semantic
+Additional injection kinds, broader structural mixins, launcher integration, semantic
 resolution, and a complete executable cache remain future work. License: [MIT](LICENSE).
 
 Version 0.4.0 supports lifetime-bearing impl methods, HEAD over preserved
@@ -144,3 +145,15 @@ closure/`?` bodies, and declarative same-crate support modules. See
 [boundary HEAD and support modules](docs/boundary-head-and-modules.md).
 The separate [Veinminer port](https://github.com/levzzz5154/horizon-veinminer)
 uses three TOML HEAD hooks and one module on the pinned complete Horizon game.
+
+Version 0.5.0 adds expression-result modification, after-call/after-assignment
+hooks, interior cancellation and namespaced per-instance state with explicit
+constructors and serde defaults. See [effects and state](docs/effects-and-state.md)
+for exact contracts, composition order, save-data behavior and supported limits.
+
+```sh
+cargo fetch --locked --manifest-path fixtures/effects/Cargo.toml
+cargo run --locked -p horizon-mixins-cli -- check \
+  --workspace fixtures/effects --mods fixtures/effects-mods \
+  --out target/effects-game --trust-native-mods
+```

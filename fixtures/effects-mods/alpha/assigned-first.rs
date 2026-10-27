@@ -1,0 +1,1 @@
+fn after(value:&i32,cancel:bool,trace:&Trace)->::core::ops::ControlFlow<i32> { mark(trace,"assigned-first"); if cancel { ::core::ops::ControlFlow::Break(*value+100) } else { ::core::ops::ControlFlow::Continue(()) } }

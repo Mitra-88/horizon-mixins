@@ -13,7 +13,7 @@ use syn::{
 
 /// Rewrite pristine expression coordinates once. Generated code is never matched.
 pub fn transform(root: &Path, plan: &Plan) -> Result<BTreeMap<String, Vec<u8>>> {
-    if plan.schema != 4 || plan.transformer != env!("CARGO_PKG_VERSION") {
+    if plan.schema != 5 || plan.transformer != env!("CARGO_PKG_VERSION") {
         return Err(Diagnostic::new(
             "E_PLAN_VERSION",
             "unsupported plan schema/transformer",
@@ -43,6 +43,11 @@ pub fn transform(root: &Path, plan: &Plan) -> Result<BTreeMap<String, Vec<u8>>> 
             .entry((&patch.file, &patch.node))
             .or_default()
             .push(patch);
+    }
+    for s in &plan.states {
+        for c in &s.constructors {
+            groups.entry((&c.file, &c.node)).or_default();
+        }
     }
     let mut trees = BTreeMap::new();
     for (file, _) in groups.keys() {
@@ -74,6 +79,29 @@ pub fn transform(root: &Path, plan: &Plan) -> Result<BTreeMap<String, Vec<u8>>> 
                 Diagnostic::new("E_STALE_SOURCE", "bridge source fingerprint mismatch")
                     .file(&bridge.file),
             );
+        }
+    }
+    for s in &plan.states {
+        if !trees.contains_key(&s.file) {
+            let bytes = files
+                .get(&s.file)
+                .ok_or_else(|| Diagnostic::new("E_PLAN_SITE", "state file absent"))?;
+            trees.insert(
+                s.file.clone(),
+                syn::parse_file(
+                    std::str::from_utf8(bytes)
+                        .map_err(|e| Diagnostic::new("E_RUST_SYNTAX", e.to_string()))?,
+                )
+                .map_err(syntax)?,
+            );
+        }
+        if source::fingerprint(tokens(bridges::item(&trees[&s.file].items, &s.node)?))
+            != s.fingerprint
+        {
+            return Err(Diagnostic::new(
+                "E_STALE_SOURCE",
+                "state owner fingerprint mismatch",
+            ));
         }
     }
     for module in &plan.modules {
@@ -166,11 +194,45 @@ pub fn transform(root: &Path, plan: &Plan) -> Result<BTreeMap<String, Vec<u8>>> 
                     .is_some_and(|v| v.at == horizon_mixins_core::manifest::Access::Store)
             });
         }
-        let expected = calls.len() + constants.len() + variables.len();
+        let mut expressions: BTreeMap<usize, Vec<&PlannedInjection>> = BTreeMap::new();
+        for p in &patches {
+            if p.kind == Kind::ModifyExpressionValue {
+                expressions
+                    .entry(p.expression_site.unwrap())
+                    .or_default()
+                    .push(*p);
+            }
+        }
+        let mut states: BTreeMap<
+            usize,
+            Vec<(
+                &horizon_mixins_core::state::PlannedState,
+                &horizon_mixins_core::state::ConstructorSite,
+            )>,
+        > = BTreeMap::new();
+        for s in &plan.states {
+            for c in &s.constructors {
+                if c.file == file && c.node == node {
+                    if c.function_fingerprint != fingerprint {
+                        return Err(Diagnostic::new(
+                            "E_STALE_SOURCE",
+                            "state constructor fingerprint mismatch",
+                        ));
+                    }
+                    states.entry(c.expression).or_default().push((s, c));
+                }
+            }
+        }
+        let expected =
+            calls.len() + constants.len() + variables.len() + expressions.len() + states.len();
         let mut rewrite = Rewrite {
             calls,
             constants,
             variables,
+            expressions,
+            states,
+            target_result: horizon_mixins_core::helpers::return_type(signature),
+            after_stack: Vec::new(),
             expression_cursor: 0,
             call_cursor: 0,
             constant_cursor: 0,
@@ -231,6 +293,21 @@ pub fn transform(root: &Path, plan: &Plan) -> Result<BTreeMap<String, Vec<u8>>> 
         }
         head.append(&mut block.stmts);
         block.stmts = head;
+    }
+    for s in &plan.states {
+        let tree = trees.get_mut(&s.file).unwrap();
+        let parent = parent_items(&mut tree.items, &s.node[..s.node.len() - 1])?;
+        let Some(Item::Struct(owner)) = parent.get_mut(*s.node.last().unwrap()) else {
+            return Err(Diagnostic::new("E_PLAN_SITE", "state owner is not struct"));
+        };
+        let syn::Fields::Named(fields) = &mut owner.fields else {
+            return Err(Diagnostic::new(
+                "E_PLAN_SITE",
+                "state owner has no named fields",
+            ));
+        };
+        fields.named.push(s.field()?);
+        parent.extend(s.items()?);
     }
     for bridge in &plan.bridges {
         let generated: Item = syn::parse_str(&bridge.generated).map_err(syntax)?;
@@ -314,6 +391,97 @@ fn value_chain(mut expr: Expr, patches: &[&PlannedInjection]) -> Result<Expr> {
         expr = invoke(p, &BTreeMap::from([("$value".into(), expr)]))?;
     }
     Ok(expr)
+}
+fn control_statement(patch: &PlannedInjection) -> Result<syn::Stmt> {
+    let call = helper_call(patch)?;
+    if patch.cancellable {
+        syn::parse2(quote!(if let ::core::ops::ControlFlow::Break(__horizon_mixins_cancel) = #call { return __horizon_mixins_cancel; })).map_err(syntax)
+    } else {
+        syn::parse2(quote!(#call;)).map_err(syntax)
+    }
+}
+fn after_adapter(value: Expr, patch: &PlannedInjection, result: &Type, flow: bool) -> Result<Expr> {
+    let ty: Type =
+        syn::parse_str(
+            patch.contract.result.as_deref().ok_or_else(|| {
+                Diagnostic::new("E_PLAN_SITE", "missing AFTER_CALL result contract")
+            })?,
+        )
+        .map_err(syntax)?;
+    let mut params = Vec::new();
+    let mut args = vec![value];
+    let mut helper_args: Vec<Expr> = Vec::new();
+    let value_name = format_ident!("__horizon_mixins_after_value");
+    for (i, binding) in patch.bindings.iter().enumerate() {
+        if binding.value == "$result_ref" {
+            helper_args.push(syn::parse_quote!(&#value_name));
+        } else if binding.value == "$result_mut" {
+            helper_args.push(syn::parse_quote!(&mut #value_name));
+        } else {
+            let name = format_ident!("__horizon_mixins_context_{i}");
+            let ty: Type = syn::parse_str(&binding.ty).map_err(syntax)?;
+            params.push(quote!(#name:#ty));
+            args.push(binding_value(patch, binding, &BTreeMap::new())?);
+            helper_args.push(syn::parse_quote!(#name));
+        }
+    }
+    let helper = plan::parse_helper(&patch.helper_source)?;
+    let name = &helper.sig.ident;
+    let call = quote!(#name(#(#helper_args),*));
+    let output: Type = if flow {
+        syn::parse_quote!(::core::ops::ControlFlow<#result,#ty>)
+    } else {
+        ty.clone()
+    };
+    let body = if patch.cancellable {
+        quote!(if let ::core::ops::ControlFlow::Break(value)=#call {return ::core::ops::ControlFlow::Break(value);})
+    } else {
+        quote!(#call;)
+    };
+    let tail = if flow {
+        quote!(::core::ops::ControlFlow::Continue(#value_name))
+    } else {
+        quote!(#value_name)
+    };
+    let mutable = patch
+        .bindings
+        .iter()
+        .any(|b| b.value == "$result_mut")
+        .then(|| quote!(mut));
+    syn::parse2(quote!(({fn __horizon_mixins_after(#mutable #value_name:#ty,#(#params),*)->#output{#helper #body #tail} __horizon_mixins_after})(#(#args),*))).map_err(syntax)
+}
+fn after_chain(
+    value: Expr,
+    patches: &[&PlannedInjection],
+    target: &Type,
+    discarded: bool,
+) -> Result<Expr> {
+    if !patches.iter().any(|p| p.cancellable) {
+        let mut value = value;
+        for patch in patches {
+            value = after_adapter(value, patch, target, false)?;
+        }
+        return Ok(value);
+    }
+    fn next(
+        value: Expr,
+        patches: &[&PlannedInjection],
+        target: &Type,
+        discarded: bool,
+    ) -> Result<Expr> {
+        if patches.is_empty() {
+            return if discarded {
+                syn::parse2(quote!({let _ = #value;})).map_err(syntax)
+            } else {
+                Ok(value)
+            };
+        }
+        let call = after_adapter(value, patches[0], target, true)?;
+        let value: Expr = syn::parse_quote!(__horizon_mixins_after_next);
+        let tail = next(value, &patches[1..], target, discarded)?;
+        syn::parse2(quote!(match #call {::core::ops::ControlFlow::Break(__horizon_mixins_cancel)=>return __horizon_mixins_cancel,::core::ops::ControlFlow::Continue(__horizon_mixins_after_next)=>#tail})).map_err(syntax)
+    }
+    next(value, patches, target, discarded)
 }
 fn wrap_operation(call: &Expr, wrappers: &[&PlannedInjection]) -> Result<Expr> {
     let operation = wrappers[0].contract.operation.as_ref().unwrap();
@@ -465,6 +633,16 @@ struct Rewrite<'a> {
     calls: BTreeMap<usize, Vec<&'a PlannedInjection>>,
     constants: BTreeMap<usize, Vec<&'a PlannedInjection>>,
     variables: BTreeMap<usize, Vec<&'a PlannedInjection>>,
+    expressions: BTreeMap<usize, Vec<&'a PlannedInjection>>,
+    states: BTreeMap<
+        usize,
+        Vec<(
+            &'a horizon_mixins_core::state::PlannedState,
+            &'a horizon_mixins_core::state::ConstructorSite,
+        )>,
+    >,
+    target_result: Type,
+    after_stack: Vec<Vec<syn::Stmt>>,
     expression_cursor: usize,
     call_cursor: usize,
     constant_cursor: usize,
@@ -476,6 +654,16 @@ impl VisitMut for Rewrite<'_> {
     fn visit_attribute_mut(&mut self, _: &mut syn::Attribute) {}
     fn visit_type_mut(&mut self, _: &mut Type) {}
     fn visit_pat_mut(&mut self, _: &mut syn::Pat) {}
+    fn visit_block_mut(&mut self, block: &mut Block) {
+        let mut output = Vec::new();
+        for mut stmt in std::mem::take(&mut block.stmts) {
+            self.after_stack.push(Vec::new());
+            self.visit_stmt_mut(&mut stmt);
+            output.push(stmt);
+            output.extend(self.after_stack.pop().unwrap());
+        }
+        block.stmts = output;
+    }
     fn visit_stmt_mut(&mut self, stmt: &mut syn::Stmt) {
         self.next_discards_result = matches!(stmt, syn::Stmt::Expr(_, Some(_)));
         visit_mut::visit_stmt_mut(self, stmt);
@@ -506,7 +694,7 @@ impl VisitMut for Rewrite<'_> {
                     Err(e) => self.error = Some(e),
                 }
             }
-            self.modify_variable(expr, expression, &expression_fingerprint);
+            self.modify_values(expr, expression, &expression_fingerprint);
             return;
         }
         let site = if sites::is_call(expr) {
@@ -562,16 +750,32 @@ impl VisitMut for Rewrite<'_> {
                 } else if !wrappers.is_empty() {
                     new = wrap_operation(&new, &wrappers)?;
                 }
+                let after: Vec<_> = patches
+                    .iter()
+                    .filter(|p| p.kind == Kind::AfterCall)
+                    .copied()
+                    .collect();
+                if !after.is_empty() {
+                    new = after_chain(new, &after, &self.target_result, discarded)?;
+                }
+                for p in patches.iter().filter(|p| p.kind == Kind::AfterAssign) {
+                    self.after_stack
+                        .last_mut()
+                        .ok_or_else(|| {
+                            Diagnostic::new("E_PLAN_SITE", "AFTER_ASSIGN has no statement")
+                        })?
+                        .push(control_statement(p)?);
+                }
                 let before: Vec<_> = patches
                     .iter()
                     .filter(|p| p.kind == Kind::BeforeCall)
-                    .map(|p| helper_call(p))
+                    .map(|p| control_statement(p))
                     .collect::<Result<_>>()?;
                 if !before.is_empty() {
                     new = if discarded {
-                        syn::parse2(quote!({ #(#before;)* #new; }))
+                        syn::parse2(quote!({#(#before)* #new;}))
                     } else {
-                        syn::parse2(quote!({ #(#before;)* #new }))
+                        syn::parse2(quote!({#(#before)* #new}))
                     }
                     .map_err(syntax)?;
                 }
@@ -585,32 +789,90 @@ impl VisitMut for Rewrite<'_> {
                 Err(e) => self.error = Some(e),
             }
         }
-        self.modify_variable(expr, expression, &expression_fingerprint);
-    }
-}
-impl Rewrite<'_> {
-    fn modify_variable(&mut self, expr: &mut Expr, expression: usize, fingerprint: &str) {
-        if let Some(patches) = self.variables.get(&expression) {
-            if patches
-                .iter()
-                .any(|p| p.site_fingerprint.as_deref() != Some(fingerprint))
-            {
-                self.error = Some(Diagnostic::new(
-                    "E_STALE_SOURCE",
-                    "variable access fingerprint mismatch",
-                ));
-                return;
-            }
-            match value_chain(expr.clone(), patches) {
-                Ok(new) => {
-                    *expr = new;
-                    self.matched += 1;
+        if let Some(states) = self.states.get(&expression) {
+            let result = (|| {
+                let Expr::Struct(literal) = expr else {
+                    return Err(Diagnostic::new(
+                        "E_PLAN_SITE",
+                        "state constructor is not a literal",
+                    ));
+                };
+                for (s, c) in states {
+                    if c.fingerprint != expression_fingerprint {
+                        return Err(Diagnostic::new(
+                            "E_STALE_SOURCE",
+                            "state literal fingerprint mismatch",
+                        ));
+                    }
+                    // Struct update moves the existing state, preserving its lifecycle.
+                    if literal.rest.is_none() {
+                        let name: syn::Ident = syn::parse_str(&s.name).map_err(syntax)?;
+                        let init = s.initializer()?;
+                        literal.fields.push(syn::parse_quote!(#name: #init()));
+                    }
                 }
+                Ok(())
+            })();
+            match result {
+                Ok(()) => self.matched += 1,
                 Err(e) => self.error = Some(e),
             }
         }
+        self.modify_values(expr, expression, &expression_fingerprint);
     }
 }
+impl Rewrite<'_> {
+    fn modify_values(&mut self, expr: &mut Expr, expression: usize, fingerprint: &str) {
+        let variable = self.variables.get(&expression).cloned().unwrap_or_default();
+        let modifiers = self
+            .expressions
+            .get(&expression)
+            .cloned()
+            .unwrap_or_default();
+        if variable.is_empty() && modifiers.is_empty() {
+            return;
+        }
+        if variable
+            .iter()
+            .chain(&modifiers)
+            .any(|p| p.site_fingerprint.as_deref() != Some(fingerprint))
+        {
+            self.error = Some(Diagnostic::new(
+                "E_STALE_SOURCE",
+                "value expression fingerprint mismatch",
+            ));
+            return;
+        }
+        let load: Vec<_> = variable
+            .iter()
+            .filter(|p| {
+                p.variable.as_ref().unwrap().at == horizon_mixins_core::manifest::Access::Load
+            })
+            .copied()
+            .collect();
+        let store: Vec<_> = variable
+            .iter()
+            .filter(|p| {
+                p.variable.as_ref().unwrap().at == horizon_mixins_core::manifest::Access::Store
+            })
+            .copied()
+            .collect();
+        let result = (|| {
+            let value = value_chain(expr.clone(), &load)?;
+            let value = value_chain(value, &modifiers)?;
+            value_chain(value, &store)
+        })();
+        match result {
+            Ok(value) => {
+                *expr = value;
+                self.matched +=
+                    usize::from(!variable.is_empty()) + usize::from(!modifiers.is_empty());
+            }
+            Err(e) => self.error = Some(e),
+        }
+    }
+}
+
 struct ReturnRewrite<'a> {
     patches: &'a [&'a PlannedInjection],
     error: Option<Diagnostic>,

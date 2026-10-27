@@ -1,0 +1,1 @@
+fn after(result:&Token,cancel:bool,trace:&Trace)->::core::ops::ControlFlow<i32> { let _ = result; mark(trace,"after-alpha"); if cancel { ::core::ops::ControlFlow::Break(41) } else { ::core::ops::ControlFlow::Continue(()) } }

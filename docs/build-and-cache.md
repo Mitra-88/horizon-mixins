@@ -44,3 +44,8 @@ packages, final executable caching, successful-binary publication and rollback.
 No launcher integration is implemented. Rust incremental artifacts are not
 assumed portable. Horizon's `fast` profile is not selected automatically; the
 MVP uses Cargo's test profile and measures it.
+
+Expression, after-hook and state changes use the same atomic stage, unchanged
+mtime preservation and Cargo target lock. Constructor source, explicit state
+initializers and helper sources participate in the canonical plan/stage identity.
+No runtime injection or save-data migration is performed by staging.

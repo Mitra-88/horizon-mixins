@@ -1,0 +1,615 @@
+{
+  "injections": [
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "trace"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 1,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "5a27cb693d603632ab2f26649dcb9a1c5bba5c422ebfce6546d549a5bc898938",
+      "helper_source": "fn modify(value:i32,trace:&Trace)->i32 { mark(trace,\"expr-alpha\"); value+1 }\n",
+      "injection_id": "expression",
+      "kind": "MODIFY_EXPRESSION_VALUE",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        11
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "add(number(trace),3)",
+      "site_fingerprint": "a1301145ca78937ed4955db9acf4980b03fddadd20ace5424ced80526d1ff423",
+      "target": "effects_game::expression"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "trace"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 1,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "5a27cb693d603632ab2f26649dcb9a1c5bba5c422ebfce6546d549a5bc898938",
+      "helper_source": "fn modify(value:i32,trace:&Trace)->i32 { mark(trace,\"expr-beta\"); value*2 }\n",
+      "injection_id": "expression",
+      "kind": "MODIFY_EXPRESSION_VALUE",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        11
+      ],
+      "ordinal": 0,
+      "priority": 0,
+      "require": 1,
+      "selector": "add(number(trace),3)",
+      "site_fingerprint": "a1301145ca78937ed4955db9acf4980b03fddadd20ace5424ced80526d1ff423",
+      "target": "effects_game::expression"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "&mut i32",
+          "value": "$result_mut"
+        },
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "trace"
+        }
+      ],
+      "call_site": 1,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "result": "i32",
+        "value": null
+      },
+      "expression_site": 2,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "0e1f9869f67977c6bdf52ae9fa7e7c09963def87c32b06bc192a548d29abf62f",
+      "helper_source": "fn after(value:&mut i32,trace:&Trace) { mark(trace,\"after-number\"); *value+=4; }\n",
+      "injection_id": "nested",
+      "kind": "AFTER_CALL",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        12
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "number",
+      "site_fingerprint": "d09bd862ef92c28693461dedddddbafdfc3d171e671c66b082943ca0813dae29",
+      "target": "effects_game::nested"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "bool",
+          "value": "$value"
+        },
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "trace"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "bool",
+        "value": "bool"
+      },
+      "expression_site": 2,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "a08790528eb06e380c4b99c417146ed2e9d7dc1dca5934e3dbfe07d5790f5806",
+      "helper_source": "fn modify(value:bool,trace:&Trace)->bool { mark(trace,\"boolean\"); !value }\n",
+      "injection_id": "boolean",
+      "kind": "MODIFY_EXPRESSION_VALUE",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        13
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "number(trace)>0",
+      "site_fingerprint": "ee9b86bfb163201562917ebff091fba719335087af8f43c986ba64e4d83812f8",
+      "target": "effects_game::short"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "8933ab32bfe2b9f8171984b8b3c4dc06f56080b71d9a7d0e8aba97d397614498",
+      "helper_source": "fn result(value:i32)->i32 {value+1}\n",
+      "injection_id": "return",
+      "kind": "RETURN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        14
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "effects_game::before"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "cancel",
+          "ty": "bool",
+          "value": "cancel"
+        },
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "trace"
+        }
+      ],
+      "call_site": 1,
+      "cancellable": true,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": ":: core :: ops :: ControlFlow < i32 >",
+        "value": null
+      },
+      "expression_site": 4,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "8933ab32bfe2b9f8171984b8b3c4dc06f56080b71d9a7d0e8aba97d397614498",
+      "helper_source": "fn before(cancel:bool,trace:&Trace)->::core::ops::ControlFlow<i32> { mark(trace,\"before\"); if cancel { ::core::ops::ControlFlow::Break(41) } else { ::core::ops::ControlFlow::Continue(()) } }\n",
+      "injection_id": "before",
+      "kind": "BEFORE_CALL",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        14
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "number",
+      "site_fingerprint": "d09bd862ef92c28693461dedddddbafdfc3d171e671c66b082943ca0813dae29",
+      "target": "effects_game::before"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "result",
+          "ty": "&Token",
+          "value": "$result_ref"
+        },
+        {
+          "name": "cancel",
+          "ty": "bool",
+          "value": "cancel"
+        },
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "trace"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": true,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": ":: core :: ops :: ControlFlow < i32 >",
+        "result": "Token",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "93eee4d3d5fd6c9ac6f1f8df0539ccf8b55ec142397f30da46c04355f2f877ca",
+      "helper_source": "fn after(result:&Token,cancel:bool,trace:&Trace)->::core::ops::ControlFlow<i32> { let _ = result; mark(trace,\"after-alpha\"); if cancel { ::core::ops::ControlFlow::Break(41) } else { ::core::ops::ControlFlow::Continue(()) } }\n",
+      "injection_id": "after",
+      "kind": "AFTER_CALL",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        15
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "receiver(trace).produce",
+      "site_fingerprint": "266921abe3bdadabf2ea0bc7fd42633a026b3a4870792f8e98c12479b18bf440",
+      "target": "effects_game::discarded"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "trace"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "result": "Token",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "93eee4d3d5fd6c9ac6f1f8df0539ccf8b55ec142397f30da46c04355f2f877ca",
+      "helper_source": "fn after(trace:&Trace) { mark(trace,\"after-beta\"); }\n",
+      "injection_id": "after",
+      "kind": "AFTER_CALL",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        15
+      ],
+      "ordinal": 0,
+      "priority": 0,
+      "require": 1,
+      "selector": "receiver(trace).produce",
+      "site_fingerprint": "266921abe3bdadabf2ea0bc7fd42633a026b3a4870792f8e98c12479b18bf440",
+      "target": "effects_game::discarded"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "&i32",
+          "value": "$local_ref:value:0"
+        },
+        {
+          "name": "cancel",
+          "ty": "bool",
+          "value": "cancel"
+        },
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "trace"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": true,
+      "captures": [
+        {
+          "binding": "value",
+          "expression": "&value",
+          "local": {
+            "fingerprint": "15ddb6e1b9ccbc4b05e3e9a47cfea201dd315452d78391aa076b4660b9c3c2d1",
+            "id": 2,
+            "mutable": true,
+            "name": "value",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": "i32"
+          },
+          "ty": "&i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": ":: core :: ops :: ControlFlow < i32 >",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "6c2e4475a010e500a52abe52700999b78d20ae4a5b84f19791dc3dac0733c5fd",
+      "helper_source": "fn after(value:&i32,cancel:bool,trace:&Trace)->::core::ops::ControlFlow<i32> { mark(trace,\"assigned-first\"); if cancel { ::core::ops::ControlFlow::Break(*value+100) } else { ::core::ops::ControlFlow::Continue(()) } }\n",
+      "injection_id": "assigned-first",
+      "kind": "AFTER_ASSIGN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        16
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 2,
+      "selector": "number",
+      "site_fingerprint": "d09bd862ef92c28693461dedddddbafdfc3d171e671c66b082943ca0813dae29",
+      "target": "effects_game::assigned"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "&mut i32",
+          "value": "$local_mut:value:0"
+        },
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "trace"
+        }
+      ],
+      "call_site": 2,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "value",
+          "expression": "&mut value",
+          "local": {
+            "fingerprint": "15ddb6e1b9ccbc4b05e3e9a47cfea201dd315452d78391aa076b4660b9c3c2d1",
+            "id": 2,
+            "mutable": true,
+            "name": "value",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": "i32"
+          },
+          "ty": "&mut i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 9,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "6c2e4475a010e500a52abe52700999b78d20ae4a5b84f19791dc3dac0733c5fd",
+      "helper_source": "fn after(value:&mut i32,trace:&Trace) { mark(trace,\"assigned-second\"); *value+=10; }\n",
+      "injection_id": "assigned-second",
+      "kind": "AFTER_ASSIGN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        16
+      ],
+      "ordinal": 1,
+      "priority": 100,
+      "require": 2,
+      "selector": "number",
+      "site_fingerprint": "d09bd862ef92c28693461dedddddbafdfc3d171e671c66b082943ca0813dae29",
+      "target": "effects_game::assigned"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "text",
+          "ty": "&mut String",
+          "value": "$local_mut:text:0"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "text",
+          "expression": "&mut text",
+          "local": {
+            "fingerprint": "2057b3c12e716344caaaa8c3ce9fa9b2c3c88f2ea544d9412d06d48983bca614",
+            "id": 1,
+            "mutable": true,
+            "name": "text",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": null
+          },
+          "ty": "&mut String"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "4a81302047e1ba021251783f1d319ba603b47468d8a66b4cfb1e9592df0a73dc",
+      "helper_source": "fn after(text:&mut String) { text.push_str(\"!\"); }\n",
+      "injection_id": "owned",
+      "kind": "AFTER_ASSIGN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        17
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "String::from",
+      "site_fingerprint": "2fcddbd162bbea6e2cd1c18e7b8b138da108f5222b97277a8a972442c7d61902",
+      "target": "effects_game::after_owned"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "entity",
+          "ty": "&mut Entity",
+          "value": "self"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "e4692c3a56ffb6465fa276a4015bc997f8d287b045f6e4a2eae344490443953c",
+      "helper_source": "fn tick(entity:&mut Entity) { let health=entity.health; entity.__horizon_mixins_alpha_history_mut().push(health); }\n",
+      "injection_id": "tick",
+      "kind": "HEAD",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        18,
+        5,
+        2
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "effects_game::state::Entity::tick"
+    }
+  ],
+  "rustc": "<pinned toolchain>",
+  "schema": 5,
+  "states": [
+    {
+      "constructors": [
+        {
+          "expression": 0,
+          "file": "game/src/lib.rs",
+          "fingerprint": "374ffffbb49c1aedd0d49b14eb9194a303945c7e78f30df54451f5e426c1aa0f",
+          "function_fingerprint": "69180dd33eb63d4d50b1edd23916fe75c1247fcbdf3ea147136068d3a88606c8",
+          "node": [
+            18,
+            5,
+            0
+          ]
+        },
+        {
+          "expression": 0,
+          "file": "game/src/lib.rs",
+          "fingerprint": "5892d6f7e1379aa939242b9a971a7df5ec31975e2c174b74d99cead90a532df6",
+          "function_fingerprint": "80490798716f3d14605e97ec47ca66e75cf90fcf46e898be5bd1c31008e6c5a4",
+          "node": [
+            18,
+            5,
+            1
+          ]
+        }
+      ],
+      "deserialize": true,
+      "file": "game/src/lib.rs",
+      "fingerprint": "5c0db814524c74e09af75f7453e0a8da0768684c9a52cc2dd36016d433261e4b",
+      "initial": ":: core :: default :: Default :: default ()",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_alpha_history",
+      "node": [
+        18,
+        4
+      ],
+      "priority": 100,
+      "state_id": "history",
+      "target": "effects_game::state::Entity",
+      "ty": "Vec < i32 >"
+    },
+    {
+      "constructors": [
+        {
+          "expression": 0,
+          "file": "game/src/lib.rs",
+          "fingerprint": "374ffffbb49c1aedd0d49b14eb9194a303945c7e78f30df54451f5e426c1aa0f",
+          "function_fingerprint": "69180dd33eb63d4d50b1edd23916fe75c1247fcbdf3ea147136068d3a88606c8",
+          "node": [
+            18,
+            5,
+            0
+          ]
+        },
+        {
+          "expression": 0,
+          "file": "game/src/lib.rs",
+          "fingerprint": "5892d6f7e1379aa939242b9a971a7df5ec31975e2c174b74d99cead90a532df6",
+          "function_fingerprint": "80490798716f3d14605e97ec47ca66e75cf90fcf46e898be5bd1c31008e6c5a4",
+          "node": [
+            18,
+            5,
+            1
+          ]
+        }
+      ],
+      "deserialize": true,
+      "file": "game/src/lib.rs",
+      "fingerprint": "5c0db814524c74e09af75f7453e0a8da0768684c9a52cc2dd36016d433261e4b",
+      "initial": "initial_counter ()",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_beta_counter",
+      "node": [
+        18,
+        4
+      ],
+      "priority": 0,
+      "state_id": "counter",
+      "target": "effects_game::state::Entity",
+      "ty": "usize"
+    }
+  ],
+  "transformer": "0.5.0"
+}

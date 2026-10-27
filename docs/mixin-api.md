@@ -98,16 +98,22 @@ MODIFY_CONSTANT and WRAP_OPERATION; see [contracts and runnable
 examples](advanced-injections.md). Version 0.3.0 adds local capture, slices,
 MODIFY_ARGS, MODIFY_VARIABLE and reusable accessor/invoker bridges; see
 [scoped contracts and examples](scopes-and-bridges.md). A bundle may contain
-injections, bridges, or both; IDs are unique across both lists in a bundle.
-Plans use schema 4, including lexical identities, original expression
+injections, bridges, support modules and/or state; IDs are unique within a bundle.
+Plans use schema 5, including lexical identities, original expression
 coordinates, resolved regions and versioned bridge metadata. Regenerate older
 plans after upgrading.
 
-Future attribute syntax, additional dependencies, arbitrary helper modules,
-semantic selectors, AFTER_CALL, REDIRECT and structural state changes require separate
+Future attribute syntax, additional dependencies, semantic selectors, REDIRECT
+and broader structural transformations require separate
 specifications and tests. The [SpongePowered feature map](spongepowered-feature-gaps.md)
 documents the remaining gaps.
 
 HEAD has a compilation-tested exception for preserved closure/`?` bodies and
 lifetime-bearing impls. Version 0.4.0 also adds `[[module]]` for shared same-crate
 implementation code. See [boundary contracts](boundary-head-and-modules.md).
+
+Version 0.5.0 adds `MODIFY_EXPRESSION_VALUE`, `AFTER_CALL`, `AFTER_ASSIGN`,
+`cancellable` interior hooks and `[[state]]` declarations. See
+[effects and state](effects-and-state.md) for explicit result contracts,
+post-assignment captures, constructor counts, initialization and serialization.
+CLI success reports now include `states` as well as injections/bridges/modules.

@@ -149,3 +149,37 @@ verifies all other original syntax is preserved. First native check/test Cargo
 wall times were 25.882 s / 49.394 s; full-workspace plan plus apply cost about
 26 s including two planner passes. These measurements cover source builds and
 tests without game assets; live gameplay remains unverified.
+
+Version 0.5.0 implements the [effects and state contracts](effects-and-state.md).
+Before implementation, `tools/effects-feasibility.rs` compiled typed value/after
+adapters and compared original/result/argument Drop order, including cancellation,
+then checked once-only expression evaluation and per-instance ownership. Its two
+Rust tests pass through the phase-0 script. Existing privacy and dependency-cycle
+failures still occur as expected.
+
+The effects workspace contains twelve injections and two state declarations
+across independent mods. Five runtime tests compile together. Engine integration
+cases additionally check move/type/alias failures, original count/ordinal errors,
+post-assignment visibility, cancellation/RETURN capture visibility, unsupported
+layouts/derives/patterns/aliases, constructor coverage and overwrite conflicts,
+state-only bundles, derived Default, Drop lifecycle and namespaced collisions.
+The 64 integration tests pass, including byte-identical plan/source snapshots,
+immutable original files and unchanged stage mtimes. Rustfmt and clippy with
+warnings denied pass. Plans and package version are schema 5 / 0.5.0.
+
+Measurements on the same Linux/rustc machine, fresh Cargo target for the effects
+fixture (includes its existing serde dependencies):
+
+| Scenario | Transform/stage wall | Cargo compile | Cargo build + tests |
+|---|---:|---:|---:|
+| First effects/state build | 0.063 s | 2.09 s | 2.133 s |
+| Unchanged run | 0.065 s | 0.01 s | 0.048 s |
+
+Raw reports are generated under `target/effects-measure-v050/`. These are tiny
+fixture measurements; no full-game rebuild speed claim follows from them.
+The pinned isolated horizon-core experiment was also repeated under
+`target/horizon-prototype-v050/`: the original upstream tests and two added HEAD
+probes pass. First modded transform/stage: 0.369 s; Cargo compile: 2.53 s; Cargo
+plus tests: 12.169 s. Unchanged: 0.363 s transform/stage, 0.00 s compile,
+9.706 s Cargo plus tests. It still uses the same committed Horizon pin and no
+Minecraft assets or upstream source edits.

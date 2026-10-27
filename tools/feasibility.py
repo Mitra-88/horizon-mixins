@@ -22,4 +22,9 @@ for fixture, command, expected in [
         assert expected in run.stderr, run.stderr
     results.append({"fixture": fixture, "seconds": round(time.monotonic() - start, 3),
                     "expected_failure": expected is not None})
+start = time.monotonic()
+spike = root / "target" / "effects-feasibility"
+subprocess.run(["rustc", "--edition=2024", "--test", str(root / "tools" / "effects-feasibility.rs"), "-o", str(spike)], check=True, capture_output=True, text=True)
+subprocess.run([str(spike)], check=True, capture_output=True, text=True)
+results.append({"fixture": "effects-feasibility", "seconds": round(time.monotonic() - start, 3), "expected_failure": False})
 print(json.dumps(results, indent=2))

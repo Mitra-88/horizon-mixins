@@ -27,6 +27,8 @@ pub struct Plan {
     pub bridges: Vec<bridges::PlannedBridge>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub modules: Vec<PlannedModule>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub states: Vec<crate::state::PlannedState>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -105,6 +107,8 @@ impl Plan {
                     p.constant_site.is_some() && p.call_site.is_none() && p.variable_site.is_none()
                 } else if p.kind == Kind::ModifyVariable {
                     p.variable_site.is_some() && p.call_site.is_none() && p.constant_site.is_none()
+                } else if p.kind == Kind::ModifyExpressionValue {
+                    p.call_site.is_none() && p.constant_site.is_none() && p.variable_site.is_none()
                 } else {
                     p.call_site.is_some() && p.constant_site.is_none() && p.variable_site.is_none()
                 }) && p.site_fingerprint.is_some()
@@ -125,7 +129,11 @@ impl Plan {
                     && p.selector.is_none()
                     && p.ordinal.is_none()
                     && p.require.is_none()
-            } && (!p.cancellable || p.kind == Kind::Head)
+            } && (!p.cancellable
+                || matches!(
+                    p.kind,
+                    Kind::Head | Kind::BeforeCall | Kind::AfterCall | Kind::AfterAssign
+                ))
                 && ((p.kind == Kind::ModifyArg) == p.argument.is_some())
                 && ((p.kind == Kind::WrapOperation) == p.contract.operation.is_some())
                 && ((p.kind == Kind::ModifyArgs) == p.contract.bundle.is_some())
@@ -137,7 +145,9 @@ impl Plan {
                         | Kind::ModifyConstant
                         | Kind::ModifyArgs
                         | Kind::ModifyVariable
-                ) == p.contract.value.is_some());
+                        | Kind::ModifyExpressionValue
+                ) == p.contract.value.is_some())
+                && ((p.kind == Kind::AfterCall) == p.contract.result.is_some());
             let metadata_valid = p.slice.as_ref().is_none_or(|s| {
                 s.start < s.end && p.expression_site.is_some_and(|i| s.start <= i && i < s.end)
             }) && (p.kind != Kind::ModifyVariable
@@ -164,6 +174,69 @@ impl Plan {
                 return Err(Diagnostic::new(
                     "E_PLAN_SITE",
                     "invalid bridge location or duplicate id",
+                ));
+            }
+        }
+        let mut names = std::collections::BTreeSet::new();
+        let mut initializers = std::collections::BTreeSet::new();
+        for s in &self.states {
+            source::relative(Path::new(&s.file))?;
+            if s.node.is_empty()
+                || !self.inputs.contains_key(&s.file)
+                || !ids.insert((&s.mod_id, &s.state_id))
+                || !s.name.starts_with("__horizon_mixins_")
+                || s.constructors.is_empty()
+            {
+                return Err(Diagnostic::new(
+                    "E_PLAN_SITE",
+                    "invalid state location, name or duplicate id",
+                ));
+            }
+            if !names.insert((s.target.clone(), s.name.clone()))
+                || !names.insert((s.target.clone(), format!("{}_mut", s.name)))
+                || !initializers.insert((
+                    &s.file,
+                    &s.node[..s.node.len() - 1],
+                    format!("{}_init", s.name),
+                ))
+            {
+                return Err(Diagnostic::new(
+                    "E_STATE_CONFLICT",
+                    "normalized state names collide",
+                ));
+            }
+            s.field()?;
+            s.items()?;
+            s.initializer()?;
+            let mut sites = std::collections::BTreeSet::new();
+            for c in &s.constructors {
+                source::relative(Path::new(&c.file))?;
+                if c.node.is_empty()
+                    || !self.inputs.contains_key(&c.file)
+                    || !sites.insert((&c.file, &c.node, c.expression))
+                {
+                    return Err(Diagnostic::new(
+                        "E_PLAN_SITE",
+                        "invalid state constructor site",
+                    ));
+                }
+                if self
+                    .injections
+                    .iter()
+                    .any(|p| p.file == c.file && p.node == c.node && p.kind == Kind::Overwrite)
+                {
+                    return Err(Diagnostic::new(
+                        "E_STATE_CONFLICT",
+                        "OVERWRITE removes a planned state constructor",
+                    ));
+                }
+            }
+            if self.bridges.iter().any(|b| {
+                b.owner == s.target && [s.name.clone(), format!("{}_mut", s.name)].contains(&b.name)
+            }) {
+                return Err(Diagnostic::new(
+                    "E_STATE_CONFLICT",
+                    "state accessor conflicts with bridge",
                 ));
             }
         }
@@ -195,6 +268,7 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
     let index = Index::load(&root)?;
     let mut injections = Vec::new();
     let mut planned_bridges = Vec::new();
+    let mut planned_states = Vec::new();
     let mut planned_modules: Vec<PlannedModule> = Vec::new();
     for bundle in mods {
         if let Some(revision) = &bundle.manifest.compatibility.horizon_revision {
@@ -229,6 +303,18 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 )
                 .file(&bundle.file));
             }
+        }
+        for state in &bundle.manifest.state {
+            planned_states.push(
+                crate::state::plan(
+                    &index,
+                    &bundle.manifest.info.id,
+                    &bundle.manifest.info.version,
+                    bundle.manifest.info.priority,
+                    state,
+                )
+                .map_err(|e| e.file(&bundle.file))?,
+            );
         }
         for (module, payload) in bundle.manifest.module.iter().zip(&bundle.modules) {
             let tree = index.files.get(&module.file).ok_or_else(|| {
@@ -412,6 +498,15 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                                 && sites::constant_key(&s.expr).as_ref() == Some(&key)
                         })
                         .collect()
+                } else if injection.kind == Kind::ModifyExpressionValue {
+                    let expression: Expr = syn::parse_str(selector)
+                        .map_err(|e| context(Diagnostic::new("E_SELECTOR", e.to_string())))?;
+                    let key = tokens(&expression);
+                    catalog
+                        .values
+                        .iter()
+                        .filter(|s| inside(s.expression) && tokens(&s.expr) == key)
+                        .collect()
                 } else {
                     let expression = sites::parse_call_selector(selector).map_err(context)?;
                     catalog
@@ -441,8 +536,19 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 if site.const_context {
                     return Err(context(Diagnostic::new("E_UNSUPPORTED_SITE", "injection cannot introduce runtime helpers into a compile-time array length or const argument").file(&f.file)));
                 }
-                if injection.kind == Kind::BeforeCall && !site.whole_expression {
+                if (injection.kind == Kind::BeforeCall
+                    || (injection.kind == Kind::AfterCall && injection.cancellable))
+                    && !site.whole_expression
+                {
                     return Err(context(Diagnostic::new("E_UNSUPPORTED_SITE", "BEFORE_CALL requires a complete statement, plain let initializer, or block/function tail; nesting can change temporary drop timing").file(&f.file)));
+                }
+                if injection.kind == Kind::AfterAssign
+                    && !scopes.after_assign.contains_key(&site.expression)
+                {
+                    return Err(context(Diagnostic::new(
+                        "E_UNSUPPORTED_SITE",
+                        "AFTER_ASSIGN requires a complete call initializer of a plain let, or the complete RHS of a simple local/parameter assignment statement",
+                    )));
                 }
                 if injection.kind == Kind::ModifyArg {
                     let arguments = match &site.expr {
@@ -481,7 +587,11 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 .map(|s| s.expression)
                 .or_else(|| selected.map(|s| s.expression));
             let contexts: Vec<_> = if let Some(site) = expression_site {
-                vec![&scopes.contexts[site]]
+                vec![if injection.kind == Kind::AfterAssign {
+                    &scopes.after_assign[&site]
+                } else {
+                    &scopes.contexts[site]
+                }]
             } else if injection.kind == Kind::Return {
                 let mut points: Vec<_> = scopes
                     .returns
@@ -503,6 +613,15 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 injection.kind,
             )
             .map_err(context)?;
+            if injection.kind == Kind::ModifyExpressionValue {
+                let site = selected.unwrap();
+                sites::validate_value_site(
+                    &site.expr,
+                    scopes.contexts[site.expression].place,
+                    contract.value.as_deref().unwrap(),
+                )
+                .map_err(context)?;
+            }
             if let Some(variable) = &injection.variable {
                 let local = &scopes.locals[variable_selected.unwrap().local];
                 let value_type = contract.value.as_ref().unwrap();
@@ -607,6 +726,13 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
             });
         }
     }
+    planned_states.sort_by(|a, b| {
+        (&a.file, &a.node)
+            .cmp(&(&b.file, &b.node))
+            .then(b.priority.cmp(&a.priority))
+            .then(a.mod_id.cmp(&b.mod_id))
+            .then(a.state_id.cmp(&b.state_id))
+    });
     planned_modules.sort_by(|a, b| {
         a.file
             .cmp(&b.file)
@@ -621,17 +747,27 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
             .then(a.bridge_id.cmp(&b.bridge_id))
     });
     for p in &injections {
-        if p.kind == Kind::Return
-            && !p.captures.is_empty()
-            && injections
-                .iter()
-                .any(|h| h.file == p.file && h.node == p.node && h.cancellable)
+        if p.kind != Kind::Return {
+            continue;
+        }
+        let f = index.resolve(&p.target)?;
+        let scopes = Scopes::analyze(f);
+        for cancel in injections
+            .iter()
+            .filter(|c| c.file == p.file && c.node == p.node && c.cancellable)
         {
-            return Err(Diagnostic::new(
-                "E_LOCAL_NOT_VISIBLE",
-                "cancellation occurs before RETURN locals are declared",
-            )
-            .file(&p.file));
+            let mut entry = f.clone();
+            entry.block = syn::parse_quote!({});
+            let entry_scopes = Scopes::analyze(&entry);
+            let context = if cancel.kind == Kind::Head {
+                entry_scopes.end.as_ref().unwrap()
+            } else if cancel.kind == Kind::AfterAssign {
+                &scopes.after_assign[&cancel.expression_site.unwrap()]
+            } else {
+                &scopes.contexts[cancel.expression_site.unwrap()]
+            };
+            scopes::resolve_bindings(f, &scopes, &p.bindings, &[context], Kind::Return)
+                .map_err(|e| e.file(&p.file))?;
         }
     }
     injections.sort_by(|a, b| {
@@ -685,17 +821,20 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
             "workspace changed during planning; retry from pristine source",
         ));
     }
-    Ok(Plan {
-        schema: 4,
+    let plan = Plan {
+        schema: 5,
         transformer: env!("CARGO_PKG_VERSION").into(),
         rustc: rustc(&root)?,
         inputs,
         injections,
         bridges: planned_bridges,
         modules: planned_modules,
-    })
+        states: planned_states,
+    };
+    plan.validate_structure()?;
+    Ok(plan)
 }
-fn validate_target(f: &Function, kind: Kind) -> Result<()> {
+pub(crate) fn validate_target(f: &Function, kind: Kind) -> Result<()> {
     let s = &f.signature;
     if s.ident.to_string().starts_with("__horizon_mixins_") {
         return Err(Diagnostic::new(
@@ -1000,15 +1139,32 @@ fn validate_composition(entries: &[&PlannedInjection]) -> Result<()> {
             }
         }
     }
-    type ValueSite = (Option<usize>, Option<usize>, Option<usize>, Option<usize>);
+    type ValueSite = (
+        Option<usize>,
+        Option<usize>,
+        Option<usize>,
+        Option<usize>,
+        Option<usize>,
+    );
     let mut values: BTreeMap<ValueSite, &PlannedInjection> = BTreeMap::new();
     for p in entries {
         if matches!(
             p.kind,
-            Kind::ModifyArg | Kind::ModifyConstant | Kind::ModifyVariable
+            Kind::ModifyArg
+                | Kind::ModifyConstant
+                | Kind::ModifyVariable
+                | Kind::ModifyExpressionValue
         ) {
             let ty = p.contract.value.as_deref().unwrap();
-            let key = (p.call_site, p.constant_site, p.variable_site, p.argument);
+            let key = (
+                p.call_site,
+                p.constant_site,
+                p.variable_site,
+                p.argument,
+                (p.kind == Kind::ModifyExpressionValue)
+                    .then_some(p.expression_site)
+                    .flatten(),
+            );
             if let Some(previous) = values.insert(key, p)
                 && previous.contract.value.as_deref() != Some(ty)
             {
@@ -1043,6 +1199,37 @@ fn validate_composition(entries: &[&PlannedInjection]) -> Result<()> {
                         "argument modifier type disagrees with the wrapper operation signature",
                     ));
                 }
+            }
+        }
+    }
+    let mut results: BTreeMap<usize, (&PlannedInjection, String)> = BTreeMap::new();
+    for p in entries {
+        let ty = if matches!(
+            p.kind,
+            Kind::ModifyExpressionValue | Kind::ModifyConstant | Kind::ModifyVariable
+        ) {
+            p.contract.value.clone()
+        } else if p.kind == Kind::AfterCall {
+            p.contract.result.clone()
+        } else if p.kind == Kind::WrapOperation {
+            p.contract.operation.as_ref().map(|op| op.output.clone())
+        } else if p.kind == Kind::ModifyArgs {
+            p.contract.bundle.as_ref().map(|b| b.output.clone())
+        } else {
+            None
+        };
+        if let Some(ty) = ty {
+            let expression = p.expression_site.unwrap();
+            if let Some((previous, expected)) = results.insert(expression, (p, ty.clone()))
+                && helpers::normalize_type(&syn::parse_str(&expected).unwrap())
+                    != helpers::normalize_type(&syn::parse_str(&ty).unwrap())
+            {
+                return Err(composition_error(
+                    p,
+                    previous,
+                    "E_VALUE_SIGNATURE",
+                    "call result/expression modifier contracts disagree at the same original expression",
+                ));
             }
         }
     }

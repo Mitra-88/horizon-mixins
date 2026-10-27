@@ -15,7 +15,7 @@ recursive/escaping module files, ambiguous identities and source files compiled
 under more than one module/target identity. Tests/examples/benches are copied
 and compiled by Cargo but are not injection targets in the MVP.
 
-Every injection and bridge resolves before any transformation. The schema-4 JSON plan
+Every injection, bridge and state constructor resolves before any transformation. The schema-5 JSON plan
 records transformer/rustc version, every input file's SHA-256, mod identity and
 version, target ID, original file and item-index path, signature/body fingerprint,
 call preorder number/fingerprint, selector/count/ordinal, priority, helper source,
@@ -38,7 +38,7 @@ modification precedes STORE modification when they select the same expression.
 Per-argument chains precede tuple chains, which precede operation wrappers.
 Bridge source fingerprints are checked before rewriting; generated impls are
 appended in their owning module after all function edits, keeping item paths
-stable. Only files with selected functions or bridges are pretty-printed;
+stable. Only files with selected functions, bridges, modules or state are pretty-printed;
 other files retain bytes.
 Non-doc comments in transformed files are not preserved by `syn`/`prettyplease`.
 
@@ -73,3 +73,13 @@ Boundary-only HEAD validation and support-module planning are described in
 [boundary-head-and-modules.md](boundary-head-and-modules.md). Modules are
 fingerprinted before rewrites and appended afterward; original item paths stay
 stable. Lifetime-only impls have canonical self-type identities.
+
+Schema 5 includes explicit AFTER_CALL result types and state owner/constructor
+fingerprints. Expression modifiers use original expression coordinates. AFTER_ASSIGN
+captures resolve in the original post-statement environment; generated statements
+are appended after that statement and never traversed. Interior cancellation
+returns from the target; exit rewriting also processes those generated exits.
+State literal fields are inserted after original child traversal, with owner
+fields/getters/initializer functions appended after all body changes. This keeps
+all original function/expression indices stable. Struct updates move existing
+state through their rest expression. See [effects and state](effects-and-state.md).

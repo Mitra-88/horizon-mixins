@@ -25,6 +25,8 @@ pub struct Contract {
     pub operation: Option<Operation>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bundle: Option<ArgumentBundle>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<String>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -91,7 +93,7 @@ pub fn normalize_type(ty: &Type) -> String {
 fn parse_type(text: &str) -> Result<Type> {
     syn::parse_str(text).map_err(|e| Diagnostic::new("E_INVALID_BINDING", e.to_string()))
 }
-fn unsupported_type(ty: &Type, references: bool) -> bool {
+pub(crate) fn unsupported_type(ty: &Type, references: bool) -> bool {
     struct Check {
         bad: bool,
         references: bool,
@@ -166,6 +168,7 @@ pub fn contract(
             | Kind::ModifyConstant
             | Kind::ModifyVariable
             | Kind::ModifyArgs
+            | Kind::ModifyExpressionValue
     ) {
         let special = if kind == Kind::ModifyArgs {
             "$args"
@@ -290,10 +293,42 @@ pub fn contract(
     } else {
         None
     };
+    let after_result = if kind == Kind::AfterCall {
+        let result = parse_type(call_result.ok_or_else(|| {
+            Diagnostic::new(
+                "E_AFTER_RESULT",
+                "AFTER_CALL requires the explicit result type",
+            )
+        })?)?;
+        if unsupported_type(&result, true) {
+            return Err(Diagnostic::new(
+                "E_AFTER_RESULT",
+                "AFTER_CALL currently requires an owned call result or unit",
+            ));
+        }
+        for binding in bindings {
+            if matches!(binding.value.as_str(), "$result_ref" | "$result_mut") {
+                let expected: Type = if binding.value == "$result_mut" {
+                    syn::parse_quote!(&mut #result)
+                } else {
+                    syn::parse_quote!(&#result)
+                };
+                if normalize_type(&parse_type(&binding.ty)?) != normalize_type(&expected) {
+                    return Err(Diagnostic::new(
+                        "E_AFTER_RESULT",
+                        "result borrow type disagrees with the call result",
+                    ));
+                }
+            }
+        }
+        Some(tokens(&result))
+    } else {
+        None
+    };
     let output = if let Some(operation) = &operation {
         operation.output.clone()
     } else if cancellable {
-        if unsupported_type(&result, false) {
+        if unsupported_type(&result, kind != Kind::Head) {
             return Err(Diagnostic::new(
                 "E_UNSUPPORTED_SIGNATURE",
                 "cancellation needs a concrete target result type",
@@ -324,6 +359,7 @@ pub fn contract(
         value: value.as_ref().map(tokens),
         operation,
         bundle,
+        result: after_result,
     })
 }
 pub fn validate_helper(
@@ -354,7 +390,7 @@ pub fn validate_helper(
             != normalize_type(&parse_type(&contract.output)?)
     {
         let why = if cancellable {
-            "cancellable HEAD helper must return core::ops::ControlFlow<TargetResult>"
+            "cancellable hook helper must return core::ops::ControlFlow<TargetResult>"
         } else {
             "helper return type must match its injection contract"
         };
@@ -420,6 +456,10 @@ pub fn validate_helper(
                             "$value"
                         }
             };
+            let valid = valid
+                || (kind == Kind::AfterCall
+                    && contract.result.is_some()
+                    && matches!(binding.value.as_str(), "$result_ref" | "$result_mut"));
             if !valid {
                 return Err(Diagnostic::new(
                     "E_INVALID_BINDING",

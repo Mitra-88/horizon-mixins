@@ -797,3 +797,6 @@ mod scoped;
 
 #[path = "cases/boundary.rs"]
 mod boundary;
+
+#[path = "cases/effects.rs"]
+mod effects;

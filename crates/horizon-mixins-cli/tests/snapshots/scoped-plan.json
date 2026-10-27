@@ -1464,6 +1464,6 @@
       "target": "scoped_game::temporary"
     }
   ],
-  "schema": 4,
-  "transformer": "0.4.0"
+  "schema": 5,
+  "transformer": "0.5.0"
 }

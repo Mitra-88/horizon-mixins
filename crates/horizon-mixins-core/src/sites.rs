@@ -107,6 +107,7 @@ pub struct Sites {
     pub calls: Vec<Site>,
     pub constants: Vec<Site>,
     pub expressions: usize,
+    pub values: Vec<Site>,
     next_is_root: bool,
     const_context: bool,
 }
@@ -129,7 +130,7 @@ impl<'ast> Visit<'ast> for Sites {
             }
             syn::Stmt::Local(local) => {
                 if let Some(init) = &local.init {
-                    self.next_is_root = matches!(&local.pat, syn::Pat::Ident(p) if p.by_ref.is_none() && p.subpat.is_none());
+                    self.next_is_root = plain_pattern(&local.pat);
                     self.visit_expr(&init.expr);
                     if let Some((_, expr)) = &init.diverge {
                         self.visit_expr(expr);
@@ -166,6 +167,7 @@ impl<'ast> Visit<'ast> for Sites {
             whole_expression: root,
             const_context: self.const_context,
         };
+        self.values.push(site(expression));
         if is_call(expr) {
             self.calls.push(site(self.calls.len()));
         }
@@ -219,4 +221,66 @@ pub fn always_exits(expr: &Expr) -> bool {
 }
 pub fn is_unit(ty: &syn::Type) -> bool {
     matches!(ty, syn::Type::Tuple(t) if t.elems.is_empty())
+}
+
+/// Whole call under parentheses, with its pristine global expression coordinate.
+pub fn root_call(expr: &Expr, expression: usize) -> Option<usize> {
+    match expr {
+        Expr::Paren(p) => root_call(&p.expr, expression + 1),
+        _ if is_call(expr) => Some(expression),
+        _ => None,
+    }
+}
+pub fn plain_pattern(pat: &syn::Pat) -> bool {
+    match pat {
+        syn::Pat::Ident(p) => p.by_ref.is_none() && p.subpat.is_none(),
+        syn::Pat::Type(p) => plain_pattern(&p.pat),
+        _ => false,
+    }
+}
+pub fn scalar(ty: &str) -> bool {
+    [
+        "bool", "char", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64",
+        "i128", "isize", "f32", "f64",
+    ]
+    .contains(&ty)
+}
+pub fn validate_value_site(expr: &Expr, place: bool, ty: &str) -> Result<()> {
+    let supported = !place
+        && match expr {
+            Expr::Call(_)
+            | Expr::MethodCall(_)
+            | Expr::Lit(_)
+            | Expr::If(_)
+            | Expr::Match(_)
+            | Expr::Block(_)
+            | Expr::Tuple(_)
+            | Expr::Array(_)
+            | Expr::Struct(_)
+            | Expr::Cast(_) => true,
+            Expr::Unary(e) => matches!(e.op, syn::UnOp::Neg(_) | syn::UnOp::Not(_)),
+            Expr::Binary(e) => !matches!(
+                e.op,
+                syn::BinOp::AddAssign(_)
+                    | syn::BinOp::SubAssign(_)
+                    | syn::BinOp::MulAssign(_)
+                    | syn::BinOp::DivAssign(_)
+                    | syn::BinOp::RemAssign(_)
+                    | syn::BinOp::BitXorAssign(_)
+                    | syn::BinOp::BitAndAssign(_)
+                    | syn::BinOp::BitOrAssign(_)
+                    | syn::BinOp::ShlAssign(_)
+                    | syn::BinOp::ShrAssign(_)
+            ),
+            Expr::Path(_) | Expr::Field(_) | Expr::Index(_) => scalar(ty),
+            _ => false,
+        };
+    if supported {
+        Ok(())
+    } else {
+        Err(Diagnostic::new(
+            "E_UNSUPPORTED_SITE",
+            "expression modifiers require a runtime value; place/reference/control-transfer uses and owned place reads are unsupported",
+        ))
+    }
 }

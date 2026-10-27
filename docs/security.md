@@ -30,3 +30,10 @@ Horizon's WebAssembly mod system remains separate.
 No game binaries, Minecraft assets, decompiled Java or prepared resources belong
 in this repository. The Horizon prototype exports only committed Rust crate
 source. License: MIT; see the repository LICENSE.
+
+Per-instance state changes the staged struct's Rust layout. repr/FFI and openly
+constructible public structs are rejected; constructor literals and initializers
+are explicit and fingerprinted. State/serialization code has the same native
+privileges as helpers. Serde defaults support old records, but custom game save
+systems and schema migrations require explicit integration; see
+[effects and state](effects-and-state.md).

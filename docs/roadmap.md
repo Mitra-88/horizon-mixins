@@ -15,7 +15,8 @@ Full game and launcher integration remain future work.
 | 6a — Advanced value/control features | Implemented: cancellable HEAD, RETURN, MODIFY_ARG, MODIFY_CONSTANT and composable WRAP_OPERATION with typed contracts, original-site planning and compiled tests |
 | 6b — Scoped features and bridges | Implemented: lexical local capture, same-block call-bounded slices, GET/GET_MUT/SET/INVOKE APIs, MODIFY_ARGS and MODIFY_VARIABLE STORE/scalar LOAD |
 | 6c — Native consumer | Implemented: lifetime impl method IDs, HEAD over preserved closure/`?` bodies, support modules and a real TOML Veinminer bundle; complete game binary compilation and AST audit |
-| 6d — Remaining parity | Future: AFTER_CALL, REDIRECT, broader sites/receivers/patterns, structural mixins, optional groups and semantic matching; see [feature map](spongepowered-feature-gaps.md) |
+| 6d — Effects and state | Implemented: expression results, AFTER_CALL/AFTER_ASSIGN, interior cancellation, explicit per-instance fields/constructors and serde old-data defaults |
+| 6e — Remaining parity | Future: REDIRECT, broader sites/receivers/patterns, arbitrary members/traits, optional groups and semantic matching; see [feature map](spongepowered-feature-gaps.md) |
 
 `cargo test --workspace --locked` checks two independent mods, same-site priority
 and ID tie order, original selectors unaffected by injected calls, call results
@@ -34,12 +35,20 @@ a separate change; it is not part of this MVP.
 The advanced fixture adds 38 declarations across two mods and eight runtime
 tests. Integration tests cover cancellation precedence, return exits and Drop,
 argument/constant value chains, FnOnce enforcement, method/self reborrowing,
-combined phases, signature conflicts, invalid sites and deterministic schema-4
+combined phases, signature conflicts, invalid sites and deterministic schema-5
 plans. See [advanced-injections.md](advanced-injections.md) for supported limits.
 
 The scoped fixture adds 25 injections, nine bridges and eight runtime tests
-across two mods. The 48 engine integration tests include lexical declaration
+across two mods. The engine integration tests include lexical declaration
 identity and shadowing, borrowed/owned capture errors, bridge privacy and mutable
 borrows, slice boundaries/counts, argument tuple composition, STORE destruction,
-LOAD-before-STORE order, bridge-only bundles, and deterministic schema-4 plans
+LOAD-before-STORE order, bridge-only bundles, and deterministic schema-5 plans
 and source. See [scopes-and-bridges.md](scopes-and-bridges.md).
+
+The effects fixture adds two independently declared states and twelve hooks,
+with five runtime tests and source/plan snapshots. Additional compiled cases
+cover owned expression results, noncancellable result destruction, post-store
+RETURN captures, state-only bundles, derived Default and Drop lifecycles.
+See [effects-and-state.md](effects-and-state.md). The full engine suite has
+64 integration tests; the independent feasibility spike runs two additional
+Rust tests before the suite.

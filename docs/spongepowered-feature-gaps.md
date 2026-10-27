@@ -1,6 +1,6 @@
 # SpongePowered Mixin feature map and remaining work
 
-Status: Horizon Mixins 0.4.0. This is a capability comparison and design backlog,
+Status: Horizon Mixins 0.5.0. This is a capability comparison and design backlog,
 not Java annotation, bytecode or mod compatibility. The implementation uses Rust
 source before Cargo compilation; Sponge Mixin integrates Java bytecode with the
 runtime classloading pipeline. [Sponge overview](https://github.com/SpongePowered/Mixin/blob/master/README.MD).
@@ -14,7 +14,7 @@ features are not accepted TOML kinds. Unknown fields/kinds still fail validation
 | Sponge capability | Horizon counterpart | Supported boundary |
 |---|---|---|
 | HEAD callback | HEAD | Explicit typed target-parameter context |
-| Cancellable callback | HEAD with `cancellable = true` | `ControlFlow<Result>`; first cancellation stops later HEAD hooks and original body |
+| Cancellable callback | HEAD, BEFORE_CALL, AFTER_CALL, AFTER_ASSIGN with `cancellable = true` | ControlFlow returns from the target; whole-expression/statement proofs for interior sites |
 | Return callbacks/result replacement | RETURN | All normal explicit/implicit exits, including cancellation; no individual return selectors, async, `?` or closure exits |
 | INVOKE callback | BEFORE_CALL | Exact syntax; only whole statements, plain let initializers and block/function tails |
 | Overwrite | OVERWRITE | Entire body; exclusive against every other injection |
@@ -26,6 +26,9 @@ features are not accepted TOML kinds. Unknown fields/kinds still fail validation
 | Slices | Optional call-selected from/to bounds | Pristine expression interval, same lexical block; inclusive start/exclusive end; explicit boundary counts/ordinals |
 | Accessor / Invoker | GET, GET_MUT, SET, INVOKE bridges | Public namespaced inherent methods on owned nongeneric structs; fields and exact existing inherent/trait calls |
 | Priorities, ordinals and count validation | priority, ordinal, require | Deterministic ID tie-breaks; require is an exact original match count here |
+| After INVOKE / INVOKE_ASSIGN | AFTER_CALL / AFTER_ASSIGN | Owned/unit result borrows before consumption, or post-statement lexical captures after the store/temporary drops |
+| MixinExtras ModifyExpressionValue | MODIFY_EXPRESSION_VALUE | Exact syntax expression selectors and explicit value types; runtime values and scalar reads, excluding places |
+| Unique instance fields | Namespaced state fields/getters | Owned named nongeneric structs, explicit constructors and derived serde defaults; custom saves remain explicit |
 | MixinExtras WrapOperation | WRAP_OPERATION | Chained FnOnce continuations; module-level free calls or borrowed parameter receivers; owned result/unit |
 
 See [advanced-injections.md](advanced-injections.md) and
@@ -38,7 +41,6 @@ match count. [Callback documentation](https://github.com/SpongePowered/Mixin/wik
 
 | Feature | What Sponge provides | Rust design needed |
 |---|---|---|
-| AFTER_CALL / INVOKE_ASSIGN | Hooks after a call and, for INVOKE_ASSIGN, after an immediately following result store | Define whether the result is observed before/after moves and assignment; preserve temporary destruction |
 | TAIL and individual RETURN selection | Final bytecode return, or a chosen return ordinal | Define Rust source exit identities; TAIL is not an alias for every return and must not silently omit early exits |
 | FIELD, NEW, JUMP sites | Field accesses, allocation/construction and branches | Distinguish place expressions from values, struct literals from constructors, and branches from enclosing expressions |
 | Redirect | Replace calls, field/array operations, object creation and selected type checks | Independent conflict rules; preserve places, indexing evaluation, borrow order, receiver effects and replacement types |
@@ -55,9 +57,10 @@ References: [injection point reference](https://github.com/SpongePowered/Mixin/w
 [Slice](https://github.com/SpongePowered/Mixin/blob/master/src/main/java/org/spongepowered/asm/mixin/injection/Slice.java),
 [custom injection points](https://github.com/SpongePowered/Mixin/blob/master/src/main/java/org/spongepowered/asm/mixin/injection/InjectionPoint.java).
 
-An AFTER_CALL prototype must test owned and borrowed results, statement-discarded
-results with Drop, argument temporaries, and failure paths. The local-variable
-fixture demonstrates that two bindings with the same name cannot be confused.
+AFTER_CALL now compiles owned/unit adapters and Drop/cancellation cases; borrowed
+results are rejected. AFTER_ASSIGN can capture stored borrowed results through
+ordinary Rust types. The local-variable fixture demonstrates that two bindings
+with the same name cannot be confused.
 A redirect prototype must reject competing replacements before staging.
 None should infer method identity from a bare method name.
 
@@ -67,7 +70,7 @@ None should infer method identity from a bare method name.
 |---|---|---|
 | Shadow | No declarative placeholders for existing fields/methods | Explicit member contracts validated in the target module; local helpers already have ordinary same-crate privacy |
 | Broader accessor / invoker support | Nongeneric owned structs only; unsafe/async/const/generic signatures and unresolved associated projections rejected | Extend signature/owner resolution with compiled privacy/lifetime examples; current bridges add no dependency edges |
-| New fields / methods and Unique | Local helpers, self-contained support modules and generated bridge methods; no arbitrary methods or persistent instance state | Stable namespacing; initialization at every construction site; reject layout/FFI-sensitive structs until proven safe |
+| Broader fields / methods and Unique | Namespaced owned instance state, support modules and generated getters/bridges are implemented; arbitrary members and generic state owners are missing | Extend explicit constructor, layout, derive and serialization contracts with compiled cases |
 | Interface / soft-implements mixins | No generated trait implementations or duck-interface adapters | Rust coherence/orphan rules, trait dependencies, associated items and existing impl conflicts must be checked by Cargo |
 | Intrinsic proxies / superclass behavior | No equivalent proxy mechanism | Define explicit delegation to original functions; Rust has no direct Java superclass model |
 | Final / Mutable controls | No Java-style field finality transformation | Rust mutability and interior-mutability rules remain enforced; an annotation must never promise to bypass borrowing |
@@ -80,10 +83,9 @@ References: [Shadow](https://github.com/SpongePowered/Mixin/blob/master/src/main
 [Final](https://github.com/SpongePowered/Mixin/blob/master/src/main/java/org/spongepowered/asm/mixin/Final.java),
 [Mutable](https://github.com/SpongePowered/Mixin/blob/master/src/main/java/org/spongepowered/asm/mixin/Mutable.java).
 
-Adding struct fields needs a separate design review covering literals in other
-crates, default constructors, serialization, pattern matching, repr/layout and
-save-data compatibility. A side table keyed by a stable game entity ID may be
-more appropriate for some state; it is a proposal, not implemented storage.
+Instance state uses explicit constructor coverage, rejects repr/open external
+construction, and supplies serde defaults for missing fields. Custom saves and
+entity-ID side tables remain explicit mod code. See [state contracts](effects-and-state.md).
 
 ## Missing configuration, tooling and compatibility features
 
@@ -110,21 +112,21 @@ MixinExtras project. Our WRAP_OPERATION follows the general chaining model but
 uses typed Rust FnOnce and our own manifests/order rules; it does not load Java
 MixinExtras mods. [WrapOperation documentation](https://github.com/LlamaLad7/MixinExtras/wiki/WrapOperation).
 
-General expression-value modification is still missing. MODIFY_CONSTANT,
-MODIFY_ARG and RETURN cover specific values, but do not select arbitrary
-comparisons, field values or expression results. A future general modifier needs
-an explicit expression identity and type contract, with place/value and Drop
-semantics tests. [ModifyExpressionValue documentation](https://github.com/LlamaLad7/MixinExtras/wiki/ModifyExpressionValue).
+`MODIFY_EXPRESSION_VALUE` now selects exact original syntax and preserves
+once-only evaluation and short-circuit behavior. Place expressions, implicit
+borrowed owned reads, compile-time values and unproven control flow are excluded.
+See [effects and state](effects-and-state.md) and upstream
+[ModifyExpressionValue documentation](https://github.com/LlamaLad7/MixinExtras/wiki/ModifyExpressionValue).
 
 ## Suggested next feature work
 
 1. Exercise the supported operations on real horizon-world state in an isolated
    pinned checkout and widen receiver/context support based on compiled cases.
-2. Design AFTER_CALL with owned/borrowed result and destruction-order tests.
+2. Widen borrowed-result adapters only with lifetime and destruction-order proofs.
 3. Add optional declarative compatibility groups and extend existing receiver,
    pattern and bridge support only for compiled use cases.
-4. Consider redirects, arbitrary expression modification and structural
-   state changes only with independent semantics and conflict tests.
+4. Consider redirects and broader member/trait transformations with independent
+   semantics and conflict tests.
 
 Launcher/build-cache work is tracked separately in [roadmap.md](roadmap.md).
 Feature parity should be judged by tested modding use cases, not by copying
@@ -132,5 +134,5 @@ annotation names onto syntax transformations with different semantics.
 
 Version 0.4.0 also supports lifetime-bearing impls and HEAD over preserved
 closure/`?` bodies; see [native consumer contracts](boundary-head-and-modules.md).
-This enables the real Veinminer bundle without arbitrary fields or constructor
-rewrites. Other body-rewriting kinds retain their existing safety limits.
+The newer state extension adds explicit constructor rewriting separately. Other
+body-rewriting kinds retain their existing safety limits.
