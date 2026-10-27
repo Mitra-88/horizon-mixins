@@ -1,29 +1,29 @@
-# Roadmap / acceptance matrix
+# Roadmap and acceptance matrix
 
-## Phase 0 — Feasibility
-Create two-crate Cargo fixture testing a same-crate injected helper, access to private fields, borrowing and dependency cycles. Write down supported binding design.
+Phases 0–4 are implemented. Phase 5 is verified for an isolated complete
+`horizon-core` crate at `028f60881678a9a0e3e198f693a82858fa475c76`.
+Full game and launcher integration remain future work.
 
-## Phase 1 — Parsing and indexing
-Workspace/CLI skeleton; TOML parser; explicit module tree, free functions and impl methods; precise ambiguous/missing errors.
+| Phase | Result |
+|---|---|
+| 0 — Feasibility | Two-crate compilation fixture proves local bridge/private fields/reborrowing; private cross-crate access and dependency cycles fail as expected |
+| 1 — Parsing/index | Three-crate CLI workspace; strict TOML; inline/external/path modules; free/inherent/trait functions; missing/ambiguous/cfg/macro diagnostics |
+| 2 — Planning | Canonical JSON; original-site fingerprints; explicit counts/ordinals; deterministic priority/ID order; overwrite conflicts before mutation |
+| 3 — Transform | HEAD, BEFORE_CALL and OVERWRITE; source/plan snapshots; compiled behavior, borrowing and return-type tests |
+| 4 — Staging/Cargo | Immutable originals; atomic Linux publication; unchanged mtimes; stable locked target directories; concurrency tests and four-scenario benchmark |
+| 5 — Upstream prototype | Isolated pinned horizon-core export, two HEAD hooks in jmath::atan, upstream tests and hook probes; no assets/upstream edits |
+| 6 — Advanced mixins | Future: independent semantics/tests for AFTER_CALL, RETURN, REDIRECT, MODIFY_ARG, MODIFY_VARIABLE and semantic matching |
 
-## Phase 2 — Planning
-JSON plan of all injections resolved against original source; ordinals, require counts, deterministic ordering; reject conflicting overwrites before mutation.
+`cargo test --workspace --locked` checks two independent mods, same-site priority
+and ID tie order, original selectors unaffected by injected calls, call results
+and exactly-once arguments/receiver evaluation, overwrite success/conflicts,
+source/plan snapshots, discovery order independence, repeated bytes/mtimes,
+immutable originals, removed files, concurrent Cargo checks, and stale source.
+It also checks missing/ambiguous targets, wrong counts/ordinals, duplicate IDs,
+malformed manifests/helpers, invalid paths, cfg/macros, unproven temporal scopes,
+parameter shadowing and compiler-diagnosed helper borrow/return failures.
 
-## Phase 3 — AST transformer
-HEAD, BEFORE_CALL, OVERWRITE; generation snapshots; positive/negative compilation-tested fixtures.
-
-## Phase 4 — Staging/build cache
-Separate immutable-original workspace; no-change file preservation; locking; cargo test of output; stable build directories and profiling.
-
-## Phase 5 — Upstream Horizon prototype
-Pin Horizon commit; choose a small low-risk game function, run isolated source patch and compilation. Only integrate launcher through a separate maintainer-approved change.
-
-## Phase 6 — Advanced Mixins
-Add AFTER_CALL, REDIRECT, RETURN, MODIFY_ARG, MODIFY_VARIABLE with independent semantic specifications/tests; consider optional type-aware analysis.
-
-## Mandatory tests
-Positive: two mods at HEAD, BEFORE_CALL preserving original call result, OVERWRITE, stable ordering independent of discovery, two identical runs unchanged outputs/mtimes, staged `cargo test` success.
-
-Negative: unknown/ambiguous function, selector absent, invalid ordinal or require, two overwrites, overwrite+HEAD, duplicate mod IDs, invalid paths, syntax errors, macro-only targets, uncertain cfg, invalid helper/borrow. Every failure must be nonzero with actionable diagnostics.
-
-CI: rustfmt, clippy, unit tests, source snapshots and Linux compilation fixtures first; expand Windows/macOS after validation.
+Linux CI runs the phase-0 script, rustfmt, clippy with warnings denied, and the
+integration suite. Expand atomic staging and compilation CI to Windows/macOS
+after implementing their directory-publication strategy. Launcher work requires
+a separate change; it is not part of this MVP.

@@ -1,0 +1,52 @@
+[mod]
+id = "alpha"
+version = "0.1.0"
+priority = 100
+
+[[injection]]
+id = "head"
+target = "fixture_game::entity::advance"
+kind = "HEAD"
+helper = "head.rs"
+bindings = [{ name = "entity", ty = "&mut Entity", value = "&mut *entity" }]
+
+[[injection]]
+id = "tick"
+target = "fixture_game::entity::Entity::tick"
+kind = "HEAD"
+helper = "tick.rs"
+bindings = [{ name = "entity", ty = "&mut Entity", value = "&mut *self" }]
+
+[[injection]]
+id = "trait"
+target = "fixture_game::entity::<Entity as Marker>::marked"
+kind = "HEAD"
+helper = "trait.rs"
+bindings = [{ name = "entity", ty = "&Entity", value = "self" }]
+
+[[injection]]
+id = "before-second"
+target = "fixture_game::calls::compute"
+kind = "BEFORE_CALL"
+selector = "consume"
+ordinal = 1
+require = 2
+helper = "before.rs"
+bindings = [{ name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+
+[[injection]]
+id = "before-method"
+target = "fixture_game::calls::method_compute"
+kind = "BEFORE_CALL"
+selector = "make_receiver(evaluations).take"
+ordinal = 0
+require = 1
+helper = "before.rs"
+bindings = [{ name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+
+[[injection]]
+id = "replace"
+target = "fixture_game::overwrite::value"
+kind = "OVERWRITE"
+helper = "replace.rs"
+bindings = [{ name = "input", ty = "i32", value = "input" }]

@@ -1,0 +1,21 @@
+[mod]
+id = "beta"
+version = "0.1.0"
+priority = 50
+
+[[injection]]
+id = "head"
+target = "fixture_game::entity::advance"
+kind = "HEAD"
+helper = "head.rs"
+bindings = [{ name = "entity", ty = "&mut Entity", value = "&mut *entity" }]
+
+[[injection]]
+id = "before-second"
+target = "fixture_game::calls::compute"
+kind = "BEFORE_CALL"
+selector = "consume"
+ordinal = 1
+require = 2
+helper = "before.rs"
+bindings = [{ name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]

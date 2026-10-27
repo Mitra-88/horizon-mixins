@@ -1,9 +1,32 @@
-# Security / trust model
+# Security and supported boundaries
 
-Native mod source, build.rs, proc macros and Cargo dependencies can execute code with user privileges. **This is not sandboxed.** Show explicit trust warnings and native-mod opt-in; keep Horizon's WASM mod environment as the safer separated path.
+Native helper source, dependencies, build scripts and proc macros can execute
+with user privileges. They are not sandboxed. `check` requires
+`--trust-native-mods` and reports an explicit diagnostic without that opt-in.
+Planning/staging does not compile the source or run build scripts; it uses
+Cargo metadata and Rust syntax parsing. Review the workspace's Cargo configuration
+and toolchain as part of trusting the native workspace.
 
-Pin and verify source/dependencies/toolchain, prevent manifest path traversal and symlink escapes, keep original Horizon checkout read-only, isolate build staging and avoid executing arbitrary build commands outside clearly approved Cargo steps. An OS build sandbox is desirable future work but not assumed available.
+Cargo.lock is required, dependency resolution/builds are locked and offline,
+and source files/toolchain are fingerprinted before rewriting. Horizon bundles
+can pin an exact commit and original function fingerprint. Source export revision
+stamps are trusted provenance metadata, not signed attestations. Helper path
+traversal, symlink escapes, source symlinks, external path dependencies and
+output paths overlapping originals/mods are rejected. Staging only replaces
+its own marked outputs, atomically on Linux.
 
-`syn` cannot resolve Rust methods/types or expand opaque macros. Injection cannot bypass privacy, borrowing, orphan rules or trait resolution. Build artifacts aren't generally portable. Compilation success does not guarantee mod safety, compatibility or gameplay correctness.
+These checks prevent accidental source escape and mutation under a cooperative
+local filesystem. They are not protection against a hostile local process racing
+filesystem checks, malicious trusted build scripts, arbitrary helper behavior or
+manual edits through hard-linked prior-stage files. Do not modify a stage while
+`check` builds it. An OS sandbox and signed/verified mod bundles remain future work.
 
-Do not redistribute Minecraft binaries, game data, decompiled source or prepared assets. Project license remains for owner selection.
+Rust privacy, ownership, borrowing, orphan rules and trait resolution still
+apply. Helpers compile inside the target crate with explicit context. `syn`
+provides syntax, not macro expansion or semantic resolution. Unproven source
+contexts are rejected; successful compilation does not establish gameplay safety.
+Horizon's WebAssembly mod system remains separate.
+
+No game binaries, Minecraft assets, decompiled Java or prepared resources belong
+in this repository. The Horizon prototype exports only committed Rust crate
+source. License: MIT; see the repository LICENSE.

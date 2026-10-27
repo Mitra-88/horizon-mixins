@@ -1,0 +1,216 @@
+{
+  "injections": [
+    {
+      "bindings": [
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 2,
+      "file": "engine/src/calls.rs",
+      "function_fingerprint": "b941316339d89602f5b6a49c22b95106b7f9ee95521080f783dd5a54f4e555a0",
+      "helper_source": "fn before(log: &mut Vec<&'static str>) {\n    // This call must never become another mod's selector match.\n    let _ = consume(0);\n    log.push(\"alpha-before\");\n}\n",
+      "injection_id": "before-second",
+      "kind": "BEFORE_CALL",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        2
+      ],
+      "ordinal": 1,
+      "priority": 100,
+      "require": 2,
+      "selector": "consume",
+      "site_fingerprint": "91e4186df028df223f88e14ac08970a269397f15d137c6dd6f3c533c289c0b3b",
+      "target": "fixture_game::calls::compute"
+    },
+    {
+      "bindings": [
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 2,
+      "file": "engine/src/calls.rs",
+      "function_fingerprint": "b941316339d89602f5b6a49c22b95106b7f9ee95521080f783dd5a54f4e555a0",
+      "helper_source": "fn before(log: &mut Vec<&'static str>) { log.push(\"beta-before\"); }\n",
+      "injection_id": "before-second",
+      "kind": "BEFORE_CALL",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        2
+      ],
+      "ordinal": 1,
+      "priority": 50,
+      "require": 2,
+      "selector": "consume",
+      "site_fingerprint": "91e4186df028df223f88e14ac08970a269397f15d137c6dd6f3c533c289c0b3b",
+      "target": "fixture_game::calls::compute"
+    },
+    {
+      "bindings": [
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 0,
+      "file": "engine/src/calls.rs",
+      "function_fingerprint": "a55eb4368e3ac36f776057a277b207ccd5f69bcae0974eebd1ef6b081c4782a0",
+      "helper_source": "fn before(log: &mut Vec<&'static str>) {\n    // This call must never become another mod's selector match.\n    let _ = consume(0);\n    log.push(\"alpha-before\");\n}\n",
+      "injection_id": "before-method",
+      "kind": "BEFORE_CALL",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        6
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "make_receiver(evaluations).take",
+      "site_fingerprint": "5f870604ee50ff4950be4bd1d6880e63eb411a450ba5abc582bb98b5d471f67e",
+      "target": "fixture_game::calls::method_compute"
+    },
+    {
+      "bindings": [
+        {
+          "name": "entity",
+          "ty": "&mut Entity",
+          "value": "&mut *self"
+        }
+      ],
+      "call_site": null,
+      "file": "engine/src/entity.rs",
+      "function_fingerprint": "d6a07cd9f6453e017191cf70eab3ee54ca6226ef13c67537b89a824ad5fcba93",
+      "helper_source": "fn tick(entity: &mut Entity) { entity.velocity += 1; }\n",
+      "injection_id": "tick",
+      "kind": "HEAD",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        1,
+        2
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "fixture_game::entity::Entity::tick"
+    },
+    {
+      "bindings": [
+        {
+          "name": "entity",
+          "ty": "&Entity",
+          "value": "self"
+        }
+      ],
+      "call_site": null,
+      "file": "engine/src/entity.rs",
+      "function_fingerprint": "5a591d2321b97f60705703ddccb094b87716afeac6a2d6398bdeca6042726a98",
+      "helper_source": "fn observe(entity: &Entity) { let _ = entity.velocity; }\n",
+      "injection_id": "trait",
+      "kind": "HEAD",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        3,
+        0
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "fixture_game::entity::<Entity as Marker>::marked"
+    },
+    {
+      "bindings": [
+        {
+          "name": "entity",
+          "ty": "&mut Entity",
+          "value": "&mut *entity"
+        }
+      ],
+      "call_site": null,
+      "file": "engine/src/entity.rs",
+      "function_fingerprint": "5456dccec0b252785f86534280d36304e49b60d1c8ae30bcc853ec28baa860f7",
+      "helper_source": "fn head(entity: &mut Entity) {\n    entity.log.push(\"alpha\");\n    entity.velocity *= 2;\n}\n",
+      "injection_id": "head",
+      "kind": "HEAD",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        4
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "fixture_game::entity::advance"
+    },
+    {
+      "bindings": [
+        {
+          "name": "entity",
+          "ty": "&mut Entity",
+          "value": "&mut *entity"
+        }
+      ],
+      "call_site": null,
+      "file": "engine/src/entity.rs",
+      "function_fingerprint": "5456dccec0b252785f86534280d36304e49b60d1c8ae30bcc853ec28baa860f7",
+      "helper_source": "fn head(entity: &mut Entity) {\n    entity.log.push(\"beta\");\n    entity.velocity += 3;\n}\n",
+      "injection_id": "head",
+      "kind": "HEAD",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        4
+      ],
+      "ordinal": null,
+      "priority": 50,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "fixture_game::entity::advance"
+    },
+    {
+      "bindings": [
+        {
+          "name": "input",
+          "ty": "i32",
+          "value": "input"
+        }
+      ],
+      "call_site": null,
+      "file": "engine/src/replacement.rs",
+      "function_fingerprint": "1a21793757ea38555e338cc1d8d8a4228a229240c4245c21dfe3edba45e77e6b",
+      "helper_source": "fn replace(input: i32) -> i32 { input * 7 }\n",
+      "injection_id": "replace",
+      "kind": "OVERWRITE",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        0
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "fixture_game::overwrite::value"
+    }
+  ],
+  "schema": 1,
+  "transformer": "0.1.0"
+}

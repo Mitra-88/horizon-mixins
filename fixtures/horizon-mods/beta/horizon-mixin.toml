@@ -1,0 +1,12 @@
+[mod]
+id = "beta"
+version = "0.1.0"
+priority = 50
+[compatibility]
+horizon_revision = "028f60881678a9a0e3e198f693a82858fa475c76"
+[[injection]]
+id = "observe-atan"
+target = "horizon_core::jmath::atan"
+kind = "HEAD"
+helper = "observe.rs"
+bindings = [{ name = "x", ty = "f64", value = "x" }]

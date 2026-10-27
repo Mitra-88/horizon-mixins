@@ -1,0 +1,28 @@
+[workspace]
+members = ["crates/horizon-mixins-core", "crates/horizon-mixins-transform", "crates/horizon-mixins-cli"]
+exclude = ["fixtures/feasibility", "fixtures/privacy-failure", "fixtures/cycle", "fixtures/game"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+
+[workspace.dependencies]
+horizon-mixins-core = { path = "crates/horizon-mixins-core" }
+horizon-mixins-transform = { path = "crates/horizon-mixins-transform" }
+syn = { version = "2", features = ["full", "visit", "visit-mut", "extra-traits"] }
+quote = "1"
+proc-macro2 = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+cargo_metadata = "0.19"
+prettyplease = "0.2"
+thiserror = "2"
+sha2 = "0.10"
+fs2 = "0.4"
+clap = { version = "4", features = ["derive"] }
+tempfile = "3"
+rustix = { version = "1", features = ["fs"] }

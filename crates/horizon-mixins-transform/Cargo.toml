@@ -1,0 +1,10 @@
+[package]
+name = "horizon-mixins-transform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[dependencies]
+horizon-mixins-core.workspace = true
+syn.workspace = true
+quote.workspace = true
+prettyplease.workspace = true

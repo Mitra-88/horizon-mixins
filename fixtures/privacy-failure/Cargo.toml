@@ -1,0 +1,7 @@
+[workspace]
+[package]
+name = "private-mod"
+version = "0.1.0"
+edition = "2024"
+[dependencies]
+spike-game = { path = "../feasibility/game" }

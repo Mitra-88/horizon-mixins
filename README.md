@@ -1,50 +1,115 @@
 # horizon-mixins
 
-**Status: design specification; no implemented Mixin engine yet.**
-
-Proposed stable-Rust, build-time source Mixins for [Horizon](https://github.com/ludovic111/horizon), the Rust Minecraft rewrite. This repository is prepared as a Codex implementation handoff.
-
-## Goal
-
-Let trusted native mods inject into Horizon Rust functions **before** Cargo compilation without requiring manual runtime hook sites. Match and validate injection locations against original source, perform deterministic AST transformations, build in a separate staging workspace, and cache compilations and completed executables. Preserve Horizon's existing WebAssembly mod system.
+A working stable-Rust CLI for deterministic, build-time source mixins for
+[Horizon](https://github.com/ludovic111/horizon). The MVP implements declarative
+TOML mods, HEAD, BEFORE_CALL, OVERWRITE, JSON planning, atomic Linux staging,
+and compilation-tested fixtures. Native mods run with your user privileges.
 
 ```text
-Pinned Horizon source + mod manifests
-       ↓
-Index original functions and validate targets
-       ↓
-Resolve and conflict-check combined injection plan
-       ↓
-Transform Rust AST with syn, stage generated workspace
-       ↓
-Pinned Cargo/rustc + incremental build cache
-       ↓
-Modded executable
+Pristine Cargo workspace + independent mod bundles
+    → index source → validate combined plan → transform AST
+    → separate staged workspace → cargo test --locked --offline
 ```
 
-## Implementation documentation
+The three workspace crates are `horizon-mixins-core` (manifests, indexing,
+planning, diagnostics), `horizon-mixins-transform` (AST rewriting), and
+`horizon-mixins-cli` (the `horizon-mixins` binary). Rust 1.95.0 and Cargo.lock
+are pinned. Cargo metadata and builds use offline, locked dependency resolution.
+Run `cargo fetch --locked` once to populate the tool's dependencies.
 
-1. [AGENTS.md](AGENTS.md) — Codex implementation instructions, MVP acceptance criteria.
-2. [Architecture](docs/architecture.md) — crates, indexing, data flow, privacy and dependency-cycle issues.
-3. [Mixin API](docs/mixin-api.md) — proposed HEAD, BEFORE_CALL and OVERWRITE syntax, future injection types.
-4. [Transformations](docs/transformations.md) — syntactic selector matching, rewrite ordering, validation and diagnostics.
-5. [Build and cache](docs/build-and-cache.md) — launcher pipeline, stable staging and Cargo reuse.
-6. [Security](docs/security.md) — unsandboxed native code and supported boundaries.
-7. [Roadmap](docs/roadmap.md) — staged implementation, compile-tested fixtures, CI.
-8. [Manifest example](examples/horizon-mixin.toml) — illustrative only.
+Build and run the complete two-mod fixture:
 
-## Verified Horizon context (2026-10-27)
+```sh
+cargo build --locked -p horizon-mixins-cli
+./target/debug/horizon-mixins plan \
+  --workspace fixtures/game --mods fixtures/mods --out target/plan.json
+./target/debug/horizon-mixins apply \
+  --workspace fixtures/game --mods fixtures/mods --out target/modded-game
+./target/debug/horizon-mixins check \
+  --workspace fixtures/game --mods fixtures/mods --out target/modded-game \
+  --trust-native-mods
+```
 
-Horizon's Cargo workspace contains `horizon-core`, `horizon-world`, `horizon-client`, `horizon-server`, `horizon-mod-sdk`, `horizon-mods`, and `cargo-horizon-mod`, among others. Its launcher lives separately in `launcher/`; mods currently use Rust compiled to WebAssembly. Root Cargo.toml declares edition 2024 / minimum Rust 1.85 while README requests Rust 1.90+ for source builds; confirm toolchain at integration. The fast build profile enables incremental compilation and disables LTO.
+`plan` writes the full validated plan to `--out`. `apply` and `check` rebuild
+that plan from pristine source, then stage all input files. They never patch
+the original checkout. `check` executes the staged workspace's tests; it
+requires explicit native-code trust. Successful commands print JSON to stdout;
+failures print a structured diagnostic to stderr and exit nonzero. JSON plans
+are review artifacts; the CLI does not execute saved plans.
 
-## MVP scope
+`check --package NAME` limits Cargo to a package; `--target-dir PATH` selects
+a reusable, locked target directory. The default target directory is a stable
+sibling of the stage. Outputs, mods and originals must be separate. Existing
+output directories need the generated stage marker. Unchanged files keep their
+bytes and mtimes, including across publication of changed stages.
 
-A source-only stable-Rust transformer using `syn`, `quote`, declarative manifests and exact syntax selectors. Implement HEAD, BEFORE_CALL, OVERWRITE, deterministic conflict resolution, immutable input, staged output and compilation-tested fixtures. Not full semantic Rust resolution, macro expansion, arbitrary local injection, MIR rewriting or runtime binary patching.
+A bundle contains `horizon-mixin.toml` and helper `.rs` files. For example:
 
-**Important:** Source rewriting does not bypass Rust privacy, type checking, borrow checking or Cargo dependency cycles. Native mods are unsandboxed and must be explicitly trusted.
+```toml
+[mod]
+id = "movement"
+version = "0.1.0"
+priority = 100
 
-Respect Horizon's public-tree and Minecraft asset policies. No Minecraft game assets, decompiled Java or prepared resources.
+[[injection]]
+id = "head"
+target = "fixture_game::entity::advance"
+kind = "HEAD"
+helper = "head.rs"
+bindings = [{ name = "entity", ty = "&mut Entity", value = "&mut *entity" }]
+```
 
-## License
+```rust
+// head.rs: compiled as a local function inside the target function.
+fn head(entity: &mut Entity) {
+    entity.velocity += 3; // Private fields in the target module are accessible.
+}
+```
 
-No license selected yet. Repository owner should select one before accepting external contributions or distributing binaries.
+Helpers use explicit typed parameter bindings. They are compiled in the game
+crate and introduce no game→mod→game Cargo cycle. All selectors resolve on the
+original AST; same-site hooks run by priority descending, mod ID ascending,
+then injection ID ascending. An OVERWRITE conflicts with every other hook on
+its function.
+
+BEFORE_CALL requires an exact syntax selector, explicit total `require`, and
+zero-based `ordinal`. It supports a complete expression statement, plain `let`
+initializer, or block/function tail. Calls nested in larger expressions are
+rejected because wrapping them can change temporary drop timing. Macro sites,
+unresolved cfg, async/closures/`?`, generic/unsafe/const targets, and ambiguous
+source identities are rejected. Rust checks privacy, types and borrowing in
+`check`; successful planning alone does not guarantee compilation.
+
+Validate the implementation:
+
+```sh
+python3 tools/feasibility.py
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+python3 tools/benchmark.py # fresh target/benchmark; use --out for another run
+```
+
+The integration suite includes generated source/plan snapshots, positive and
+negative compilation, deterministic ordering, immutable originals, stale-source
+rejection, concurrent checks, and unchanged mtimes. Linux CI runs the same checks.
+
+An isolated test against the complete `horizon-core` crate from commit
+`028f60881678a9a0e3e198f693a82858fa475c76` passed, including two independent
+HEAD hooks in `jmath::atan`. Reproduce it using your local clone:
+
+```sh
+python3 tools/horizon_prototype.py --horizon /home/levzzz/Documents/horizon
+```
+
+It exports committed crate sources into a fresh `target/horizon-prototype`,
+uses an isolated workspace manifest/lockfile, runs upstream tests and generated
+probes, and records timings. It does not build the full game or launcher.
+No upstream checkout is edited; no Minecraft assets or prepared resources are used.
+
+Further documentation: [API](docs/mixin-api.md),
+[transformations](docs/transformations.md), [architecture](docs/architecture.md),
+[staging and cache](docs/build-and-cache.md), [security](docs/security.md),
+[roadmap](docs/roadmap.md), [feasibility and measurements](docs/implementation.md).
+Advanced injection kinds, launcher integration, semantic resolution, and a
+complete executable cache remain future work. License: [MIT](LICENSE).

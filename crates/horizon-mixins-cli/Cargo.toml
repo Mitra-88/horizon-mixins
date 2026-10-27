@@ -1,0 +1,19 @@
+[package]
+name = "horizon-mixins-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[[bin]]
+name = "horizon-mixins"
+path = "src/main.rs"
+[dependencies]
+horizon-mixins-core.workspace = true
+horizon-mixins-transform.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+fs2.workspace = true
+tempfile.workspace = true
+rustix.workspace = true
+[dev-dependencies]
+toml.workspace = true

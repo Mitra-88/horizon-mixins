@@ -1,45 +1,49 @@
 # Architecture
 
-## Stages
-1. Discover pinned Horizon revision/toolchain and mod manifests.
-2. Build module/function index from Cargo metadata + source files using `syn`.
-3. Resolve every selector against the **original** AST, not prior mods' output.
-4. Construct canonical patch plan and preflight conflicts.
-5. Transform a copied syntax tree; generate staged source and bridge code.
-6. Compile staged workspace with pinned Cargo/rustc; publish a fingerprinted executable.
-7. Eventually add a launcher-facing JSON integration.
+The implemented workspace has three crates:
 
-## Suggested workspace
-```text
-crates/
-  horizon-mixins-core/       # manifests, IR, selectors, planner, errors
-  horizon-mixins-transform/  # syn AST visitor, code generation
-  horizon-mixins-cli/        # plan, apply, check
-fixtures/                    # standalone game crate, mod snippets, tests
-docs/
-```
+- `horizon-mixins-core`: strict manifests, source snapshots, module/function
+  indexing, original-site IR, conflict detection and structured diagnostics.
+- `horizon-mixins-transform`: pure `syn` AST rewrite and `prettyplease` output.
+- `horizon-mixins-cli`: `plan`, `apply`, `check`, atomic staging and Cargo locks.
 
-## Index and naming
-Index module tree including `mod name { }`, `mod name;`, `#[path]`, free functions, inherent impls and `impl Trait for Type`. Include crate, module, impl identity and function in target IDs. Rust `cfg` and macro-generated functions cannot be confidently inferred by a syntax-only pass; reject unsupported targets. Same-named methods require explicit disambiguation. Fingerprint original body/site for version compatibility.
+The planner snapshots inputs, asks `cargo_metadata` for workspace libraries and
+binaries with `--no-deps --locked --offline`, and walks their original module
+trees. It handles inline modules, external `mod.rs`/`name.rs`, `#[path]`, free
+functions, inherent impls and trait impls. It rejects external path dependencies,
+recursive/escaping module files, ambiguous identities and source files compiled
+under more than one module/target identity. Tests/examples/benches are copied
+and compiled by Cargo but are not injection targets in the MVP.
 
-## Major integration issue: privacy and crate cycles
-A function patched inside `horizon-world` cannot simply call private code in a separate mod crate; Rust privacy remains. Also game→mod→game introduces Cargo dependency cycles. Prototype a generated **same-crate shim** (or inlined mod-specific helper), with explicit validated context bindings, and compile a fixture to prove visibility/lifetimes. For later versions a stable typed bridge API can expose game types safely.
+Every injection resolves before any transformation. The schema-1 JSON plan
+records transformer/rustc version, every input file's SHA-256, mod identity and
+version, target ID, original file and item-index path, signature/body fingerprint,
+call preorder number/fingerprint, selector/count/ordinal, priority, helper source,
+and explicit bindings. It contains no absolute checkout paths or discovery paths,
+so bundle enumeration does not affect serialized bytes.
 
-## IR (illustrative)
-```rust
-enum Kind { Head, BeforeCall, Overwrite }
-struct Injection {
-    mod_id: String,
-    injection_id: String,
-    target: String,
-    kind: Kind,
-    selector: Option<String>,
-    ordinal: Option<usize>,
-    require: usize,
-    priority: i32,
-}
-```
-Plan record contains original file path, target, AST site path, original fingerprint, insertion order, required helper and compatibility metadata. Stable serialization permits launcher diagnostics and caching.
+The transformer verifies input/toolchain fingerprints, groups patches by source
+function, numbers only original call nodes in preorder, and rewrites their
+children before replacing each selected node. It never traverses generated
+helper code. It applies HEAD statements after rewriting original call sites.
+This preserves original coordinates even when hooks contain matching calls.
+Only files with target functions are pretty-printed; other files retain bytes.
+Non-doc comments in transformed files are not preserved by `syn`/`prettyplease`.
 
-## Constraints
-Keep original checkout unchanged, pin revisions and lockfiles, avoid distributing Minecraft assets or prepared resources. Later compiler-aided resolution may augment the syntactic core but must not be required for MVP.
+The privacy bridge is a local function inside the patched body. Explicit
+parameter bindings supply all context, with Rust enforcing privacy, moves,
+borrows and return types during `check`. No mod crate becomes a dependency of
+the game, so this design introduces no Cargo cycle. The phase-0 two-crate fixture
+proves private field access/reborrowing and checks that cross-crate private
+access and circular dependencies actually fail. Native helpers use the target
+crate's existing dependency/import environment; adding dependencies is future work.
+
+The CLI rebuilds a validated plan for each invocation, transforms in memory,
+then publishes a complete separate workspace. Saved JSON plans are reviewable
+artifacts and are not executable CLI inputs. The transform library validates
+IR structure and original fingerprints before traversing it; callers should
+obtain semantic plans through `build_plan`.
+
+See [staging](build-and-cache.md), [supported bindings](mixin-api.md), and
+[prototype results](implementation.md). Compiler-aided resolution, launcher
+protocols and fingerprinted executable publication remain future work.

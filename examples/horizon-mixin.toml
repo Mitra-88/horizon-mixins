@@ -1,17 +1,16 @@
-# Illustrative manifest; loader does not exist yet.
+# A loadable declaration for the pinned tiny workspace (fixtures/game).
+# For the complete passing two-mod compilation fixture, use fixtures/mods.
 [mod]
-id = "better-movement"
+id = "example"
 version = "0.1.0"
 priority = 100
 
-[compatibility]
-horizon_revision = "PINNED_COMMIT_SHA"
-
 [[injection]]
-id = "before-friction"
-target = "horizon_client::entity::update_velocity"
+id = "before-second-call"
+target = "fixture_game::calls::compute"
 kind = "BEFORE_CALL"
-selector = "entity.apply_friction"
-ordinal = 0
-require = 1
-helper = "better_movement::before_friction"
+selector = "consume"
+ordinal = 1
+require = 2
+helper = "before.rs"
+bindings = [{ name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]

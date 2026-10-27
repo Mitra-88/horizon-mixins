@@ -1,0 +1,427 @@
+use crate::{Diagnostic, Result, diagnostic::io, source};
+use quote::ToTokens;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    path::{Path, PathBuf},
+};
+use syn::{Attribute, Block, FnArg, Item, Signature};
+
+#[derive(Debug, Clone)]
+pub struct Function {
+    pub id: String,
+    pub file: String,
+    /// Item indices, descending through inline modules and ending at a function or impl method.
+    pub node: Vec<usize>,
+    pub signature: Signature,
+    pub block: Block,
+    pub unsupported_cfg: bool,
+    pub unsupported_macro: bool,
+    pub generic_impl: bool,
+}
+#[derive(Debug)]
+pub struct Index {
+    pub functions: Vec<Function>,
+    pub blocked: BTreeSet<String>,
+    pub macro_modules: BTreeSet<String>,
+    pub files: BTreeMap<String, syn::File>,
+}
+pub fn tokens(value: &impl ToTokens) -> String {
+    value.to_token_stream().to_string()
+}
+pub fn cfg(attrs: &[Attribute]) -> bool {
+    attrs
+        .iter()
+        .any(|a| a.path().is_ident("cfg") || a.path().is_ident("cfg_attr"))
+}
+
+pub fn macro_attributes(attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|a| {
+        let Some(name) = a.path().get_ident() else {
+            return true;
+        };
+        !matches!(
+            name.to_string().as_str(),
+            "doc"
+                | "cfg"
+                | "cfg_attr"
+                | "path"
+                | "allow"
+                | "warn"
+                | "deny"
+                | "forbid"
+                | "expect"
+                | "inline"
+                | "cold"
+                | "must_use"
+                | "deprecated"
+                | "track_caller"
+        )
+    })
+}
+
+impl Index {
+    pub fn load(root: &Path) -> Result<Self> {
+        if !root.join("Cargo.lock").is_file() {
+            return Err(Diagnostic::new(
+                "E_UNPINNED",
+                "workspace needs a committed Cargo.lock; generate it before planning",
+            )
+            .file(root));
+        }
+        let metadata = cargo_metadata::MetadataCommand::new()
+            .manifest_path(root.join("Cargo.toml"))
+            .no_deps()
+            .other_options(vec!["--offline".into(), "--locked".into()])
+            .exec()
+            .map_err(|e| Diagnostic::new("E_METADATA", e.to_string()))?;
+        if metadata
+            .workspace_root
+            .as_std_path()
+            .canonicalize()
+            .map_err(io)?
+            != root
+        {
+            return Err(Diagnostic::new(
+                "E_INVALID_PATH",
+                "--workspace must name the Cargo workspace root",
+            ));
+        }
+        for package in &metadata.packages {
+            for dep in &package.dependencies {
+                if let Some(path) = &dep.path
+                    && !path
+                        .as_std_path()
+                        .canonicalize()
+                        .map_err(io)?
+                        .starts_with(root)
+                {
+                    return Err(Diagnostic::new(
+                        "E_INVALID_PATH",
+                        "path dependencies must remain inside the staged workspace",
+                    )
+                    .file(path.as_std_path()));
+                }
+            }
+        }
+        let mut index = Self {
+            functions: Vec::new(),
+            blocked: BTreeSet::new(),
+            macro_modules: BTreeSet::new(),
+            files: BTreeMap::new(),
+        };
+        for package in &metadata.packages {
+            if !metadata.workspace_members.contains(&package.id) {
+                continue;
+            }
+            for target in &package.targets {
+                if !target.kind.iter().any(|k| {
+                    matches!(
+                        k,
+                        cargo_metadata::TargetKind::Lib
+                            | cargo_metadata::TargetKind::Bin
+                            | cargo_metadata::TargetKind::RLib
+                            | cargo_metadata::TargetKind::CDyLib
+                            | cargo_metadata::TargetKind::DyLib
+                            | cargo_metadata::TargetKind::StaticLib
+                    )
+                }) {
+                    continue;
+                }
+                let path = target.src_path.as_std_path();
+                let prefix = target.name.replace('-', "_");
+                if !target.required_features.is_empty() {
+                    index.blocked.insert(prefix);
+                    continue;
+                }
+                index.read(
+                    root,
+                    path,
+                    &prefix,
+                    path.parent().unwrap(),
+                    false,
+                    &mut BTreeSet::new(),
+                )?;
+            }
+        }
+        Ok(index)
+    }
+    fn read(
+        &mut self,
+        root: &Path,
+        path: &Path,
+        prefix: &str,
+        module_dir: &Path,
+        inherited_cfg: bool,
+        active: &mut BTreeSet<PathBuf>,
+    ) -> Result<()> {
+        let path = path.canonicalize().map_err(|e| io(e).file(path))?;
+        if !path.starts_with(root) {
+            return Err(Diagnostic::new("E_INVALID_PATH", "module escapes workspace").file(&path));
+        }
+        if !active.insert(path.clone()) {
+            return Err(Diagnostic::new("E_INVALID_PATH", "recursive external module").file(path));
+        }
+        let file = path
+            .strip_prefix(root)
+            .unwrap()
+            .to_str()
+            .ok_or_else(|| Diagnostic::new("E_INVALID_PATH", "non UTF-8 module path"))?
+            .replace('\\', "/");
+        let tree = syn::parse_file(&fs::read_to_string(&path).map_err(io)?)
+            .map_err(|e| Diagnostic::new("E_RUST_SYNTAX", e.to_string()).file(&path))?;
+        self.items(
+            root,
+            &tree.items,
+            &file,
+            prefix,
+            module_dir,
+            &[],
+            inherited_cfg || cfg(&tree.attrs),
+            active,
+        )?;
+        if macro_attributes(&tree.attrs) {
+            self.macro_modules.insert(format!("@{prefix}"));
+        }
+        self.files.insert(file, tree);
+        active.remove(&path);
+        Ok(())
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn items(
+        &mut self,
+        root: &Path,
+        items: &[Item],
+        file: &str,
+        prefix: &str,
+        module_dir: &Path,
+        parent: &[usize],
+        inherited_cfg: bool,
+        active: &mut BTreeSet<PathBuf>,
+    ) -> Result<()> {
+        for (i, item) in items.iter().enumerate() {
+            let mut node = parent.to_vec();
+            node.push(i);
+            match item {
+                Item::Fn(f) => self.functions.push(Function {
+                    id: format!("{prefix}::{}", f.sig.ident),
+                    file: file.into(),
+                    node,
+                    signature: f.sig.clone(),
+                    block: *f.block.clone(),
+                    unsupported_cfg: inherited_cfg || cfg(&f.attrs),
+                    unsupported_macro: macro_attributes(&f.attrs),
+                    generic_impl: false,
+                }),
+                Item::Mod(m) => {
+                    let next = format!("{prefix}::{}", m.ident);
+                    let uncertain = inherited_cfg || cfg(&m.attrs);
+                    if macro_attributes(&m.attrs) {
+                        self.macro_modules.insert(format!("@{next}"));
+                        continue;
+                    }
+                    if uncertain {
+                        self.blocked.insert(next);
+                        continue;
+                    }
+                    if let Some((_, nested)) = &m.content {
+                        self.items(
+                            root,
+                            nested,
+                            file,
+                            &next,
+                            &module_dir.join(m.ident.to_string()),
+                            &node,
+                            false,
+                            active,
+                        )?;
+                    } else {
+                        let attr = m.attrs.iter().find(|a| a.path().is_ident("path"));
+                        let path = if let Some(attr) = attr {
+                            let syn::Meta::NameValue(nv) = &attr.meta else {
+                                return Err(Diagnostic::new(
+                                    "E_INVALID_PATH",
+                                    "expected #[path = \"relative.rs\"]",
+                                )
+                                .file(file));
+                            };
+                            let syn::Expr::Lit(lit) = &nv.value else {
+                                return Err(Diagnostic::new(
+                                    "E_INVALID_PATH",
+                                    "module path must be literal",
+                                )
+                                .file(file));
+                            };
+                            let syn::Lit::Str(value) = &lit.lit else {
+                                return Err(Diagnostic::new(
+                                    "E_INVALID_PATH",
+                                    "module path must be a string",
+                                )
+                                .file(file));
+                            };
+                            source::relative(Path::new(&value.value()))?;
+                            // #[path] on an external item is relative to the containing source directory.
+                            let base = if parent.is_empty() {
+                                root.join(file).parent().unwrap().to_path_buf()
+                            } else {
+                                module_dir.to_path_buf()
+                            };
+                            base.join(value.value())
+                        } else {
+                            let a = module_dir.join(format!("{}.rs", m.ident));
+                            let b = module_dir.join(m.ident.to_string()).join("mod.rs");
+                            match (a.is_file(), b.is_file()) {
+                                (true, false) => a,
+                                (false, true) => b,
+                                (true, true) => {
+                                    return Err(Diagnostic::new(
+                                        "E_TARGET_AMBIGUOUS",
+                                        format!(
+                                            "both {} and {} define {next}",
+                                            a.display(),
+                                            b.display()
+                                        ),
+                                    )
+                                    .file(file));
+                                }
+                                _ => {
+                                    return Err(Diagnostic::new(
+                                        "E_INVALID_PATH",
+                                        format!("module {next} has no source file"),
+                                    )
+                                    .file(file));
+                                }
+                            }
+                        };
+                        let subdir =
+                            if path.file_name().is_some_and(|n| n == "mod.rs") || attr.is_some() {
+                                path.parent().unwrap().to_path_buf()
+                            } else {
+                                path.parent().unwrap().join(path.file_stem().unwrap())
+                            };
+                        self.read(root, &path, &next, &subdir, false, active)?;
+                    }
+                }
+                Item::Impl(imp) => {
+                    let ty = tokens(&imp.self_ty).replace(' ', "");
+                    let identity = if let Some((_, tr, _)) = &imp.trait_ {
+                        format!("<{ty} as {}>", tokens(tr).replace(' ', ""))
+                    } else {
+                        ty
+                    };
+                    for (j, member) in imp.items.iter().enumerate() {
+                        if let syn::ImplItem::Fn(f) = member {
+                            let mut node = node.clone();
+                            node.push(j);
+                            self.functions.push(Function {
+                                id: format!("{prefix}::{identity}::{}", f.sig.ident),
+                                file: file.into(),
+                                node,
+                                signature: f.sig.clone(),
+                                block: f.block.clone(),
+                                unsupported_cfg: inherited_cfg || cfg(&imp.attrs) || cfg(&f.attrs),
+                                unsupported_macro: macro_attributes(&imp.attrs)
+                                    || macro_attributes(&f.attrs),
+                                generic_impl: !imp.generics.params.is_empty(),
+                            });
+                        }
+                    }
+                }
+                Item::Macro(_) => {
+                    self.macro_modules.insert(prefix.into());
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+    pub fn resolve(&self, target: &str) -> Result<&Function> {
+        if self
+            .blocked
+            .iter()
+            .any(|p| target == p || target.starts_with(&format!("{p}::")))
+        {
+            return Err(Diagnostic::new(
+                "E_UNSUPPORTED_CFG",
+                "target is under unresolved cfg/cfg_attr; select unconditional source",
+            ));
+        }
+        let found: Vec<_> = self.functions.iter().filter(|f| f.id == target).collect();
+        if self
+            .macro_modules
+            .iter()
+            .filter_map(|p| p.strip_prefix('@'))
+            .any(|p| target.starts_with(&format!("{p}::")))
+        {
+            return Err(Diagnostic::new(
+                "E_UNSUPPORTED_MACRO",
+                "target module has an unexpanded attribute macro",
+            ));
+        }
+        if let [f] = found.as_slice() {
+            if self
+                .functions
+                .iter()
+                .filter(|other| other.file == f.file && other.node == f.node)
+                .count()
+                > 1
+            {
+                return Err(Diagnostic::new("E_TARGET_AMBIGUOUS", "source function is reused by multiple modules or Cargo targets; it cannot be patched independently").file(&f.file));
+            }
+            if f.unsupported_macro {
+                return Err(Diagnostic::new(
+                    "E_UNSUPPORTED_MACRO",
+                    "target function/impl has an unexpanded attribute macro",
+                )
+                .file(&f.file));
+            }
+        }
+        match found.as_slice() {
+            [f] if f.unsupported_cfg => Err(Diagnostic::new(
+                "E_UNSUPPORTED_CFG",
+                "target or impl has unresolved cfg/cfg_attr",
+            )
+            .file(&f.file)),
+            [f] => Ok(f),
+            [] => {
+                let module = target.rsplit_once("::").map(|(p, _)| p).unwrap_or(target);
+                let code = if self.macro_modules.contains(module) {
+                    "E_UNSUPPORTED_MACRO"
+                } else {
+                    "E_TARGET_NOT_FOUND"
+                };
+                Err(Diagnostic::new(
+                    code,
+                    format!(
+                        "no source function '{target}'; use an exact crate::module::function, Type::method or <Type as Trait>::method ID"
+                    ),
+                ))
+            }
+            _ => Err(Diagnostic::new(
+                "E_TARGET_AMBIGUOUS",
+                format!(
+                    "'{target}' resolves to {} definitions (including Cargo targets); use an unambiguous unconditional target",
+                    found.len()
+                ),
+            )),
+        }
+    }
+}
+pub fn parameters(sig: &Signature) -> Result<BTreeSet<String>> {
+    sig.inputs
+        .iter()
+        .map(|arg| match arg {
+            FnArg::Receiver(_) => Ok("self".into()),
+            FnArg::Typed(t) => {
+                if let syn::Pat::Ident(i) = &*t.pat {
+                    Ok(i.ident.to_string())
+                } else {
+                    Err(Diagnostic::new(
+                        "E_INVALID_BINDING",
+                        "destructured function parameters are unsupported",
+                    ))
+                }
+            }
+        })
+        .collect()
+}
