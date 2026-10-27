@@ -2,8 +2,10 @@
 
 A working stable-Rust CLI for deterministic, build-time source mixins for
 [Horizon](https://github.com/ludovic111/horizon). The MVP implements declarative
-TOML mods, HEAD, BEFORE_CALL, OVERWRITE, JSON planning, atomic Linux staging,
-and compilation-tested fixtures. Native mods run with your user privileges.
+TOML mods, HEAD (including cancellation), BEFORE_CALL, RETURN, MODIFY_ARG,
+MODIFY_ARGS, MODIFY_CONSTANT, MODIFY_VARIABLE, WRAP_OPERATION, OVERWRITE,
+lexical local capture, slices, accessor/invoker bridges, JSON planning and atomic
+Linux staging. Native mods run with your user privileges.
 
 ```text
 Pristine Cargo workspace + independent mod bundles
@@ -80,6 +82,29 @@ unresolved cfg, async/closures/`?`, generic/unsafe/const targets, and ambiguous
 source identities are rejected. Rust checks privacy, types and borrowing in
 `check`; successful planning alone does not guarantee compilation.
 
+The five advanced features have a separate compilation fixture:
+
+```sh
+cargo run --locked -p horizon-mixins-cli -- check \
+  --workspace fixtures/advanced --mods fixtures/advanced-mods \
+  --out target/advanced-game --trust-native-mods
+```
+
+See [advanced injection contracts and examples](docs/advanced-injections.md)
+and the [SpongePowered feature map / remaining gaps](docs/spongepowered-feature-gaps.md).
+
+Version 0.3.0 adds local capture, slices, reusable field/method bridges, joint
+argument modification and local/parameter STORE and scalar LOAD modification:
+
+```sh
+cargo run --locked -p horizon-mixins-cli -- check \
+  --workspace fixtures/scoped --mods fixtures/scoped-mods \
+  --out target/scoped-game --trust-native-mods
+```
+
+The [scoped injection and bridge guide](docs/scopes-and-bridges.md) documents
+the exact contracts and limits. Plans use schema 4; regenerate older plans.
+
 Validate the implementation:
 
 ```sh
@@ -90,7 +115,7 @@ cargo test --workspace --locked
 python3 tools/benchmark.py # fresh target/benchmark; use --out for another run
 ```
 
-The integration suite includes generated source/plan snapshots, positive and
+The 48-test integration suite includes generated source/plan snapshots, positive and
 negative compilation, deterministic ordering, immutable originals, stale-source
 rejection, concurrent checks, and unchanged mtimes. Linux CI runs the same checks.
 
@@ -111,5 +136,11 @@ Further documentation: [API](docs/mixin-api.md),
 [transformations](docs/transformations.md), [architecture](docs/architecture.md),
 [staging and cache](docs/build-and-cache.md), [security](docs/security.md),
 [roadmap](docs/roadmap.md), [feasibility and measurements](docs/implementation.md).
-Advanced injection kinds, launcher integration, semantic resolution, and a
-complete executable cache remain future work. License: [MIT](LICENSE).
+Additional injection kinds, structural mixins, launcher integration, semantic
+resolution, and a complete executable cache remain future work. License: [MIT](LICENSE).
+
+Version 0.4.0 supports lifetime-bearing impl methods, HEAD over preserved
+closure/`?` bodies, and declarative same-crate support modules. See
+[boundary HEAD and support modules](docs/boundary-head-and-modules.md).
+The separate [Veinminer port](https://github.com/levzzz5154/horizon-veinminer)
+uses three TOML HEAD hooks and one module on the pinned complete Horizon game.

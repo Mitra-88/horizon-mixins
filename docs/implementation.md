@@ -25,7 +25,7 @@ result/exactly-once evaluation, method receiver/argument evaluation, and
 OVERWRITE. The engine integration suite adds source/plan snapshots, manifest
 and selector failures, cfg/macros, ambiguity, conflicts, borrowing/return-type
 compilation failures, concurrent checks, immutable originals and preserved
-mtimes. All 16 integration tests pass. Linux CI runs rustfmt, clippy with
+mtimes. The initial MVP passed all 16 baseline integration tests. Linux CI runs rustfmt, clippy with
 warnings denied, phase-0 compilation and the integration suite.
 
 A first four-scenario fixture measurement produced:
@@ -67,5 +67,85 @@ raw baseline/Cargo logs and a report on the current machine.
 
 This validates the isolated complete foundation crate, not the full Horizon
 game, graphics/audio stack, prepared assets, launcher, or production gameplay
-compatibility. Advanced injection semantics, semantic resolution, cross-platform
-atomic replacement and executable publication/caching remain future work.
+compatibility. Additional injection kinds, semantic resolution, cross-platform atomic
+replacement and executable publication/caching remain future work.
+
+
+Version 0.2.0 adds five advanced features, with the semantic specification in
+[advanced-injections.md](advanced-injections.md). A separate stable-Rust spike
+compiled ControlFlow cancellation, owned FnOnce chains and temporary-preserving
+value calls before implementation. The new dependency-free two-crate fixture
+has 38 injections across two mods and eight runtime tests. It covers cancellation
+precedence, all supported return exits, owned/borrowed results, private method
+receivers, argument/constant chains, skipping operations and combined phases.
+Further integration cases trace temporary/local destruction, nested returns,
+compiler rejection of double continuation calls and moved values, wrong original
+argument types, failed signatures/indices/sites, unchanged mtimes and source,
+and deterministic schema-2 plans/source snapshots. The Sponge feature map
+tracks remaining capabilities rather than implying Java API compatibility.
+
+
+The final 0.2.0 validation passes 27 engine integration tests, including the 16
+baseline cases; those compile the four baseline and eight advanced fixture
+runtime tests plus independent scope/borrow/error probes. Rustfmt and clippy
+with warnings denied pass. Selector regressions also check that spaces inside
+string literals and identifier boundaries cannot silently select a different
+receiver expression.
+
+An advanced-fixture measurement recorded 0.090 s transformation/staging,
+0.20 s Cargo compilation and 0.248 s Cargo-plus-tests on its first build. An
+unchanged run retained the stage and recorded 0.087 s transformation/staging,
+0.00 s compilation and 0.046 s Cargo-plus-tests. Raw local reports are under
+`target/advanced-v020-{first,unchanged}.json`; these values describe this tiny
+fixture on this machine.
+
+The existing pinned Horizon HEAD prototype was rerun with 0.2.0 and again
+passed 116 library/integration/probe tests with two ignored upstream benchmarks.
+Its first staged build reported 2.67 s compilation, and the unchanged run 0.00 s.
+This regression confirms the existing isolated-crate integration; the new five
+features are validated on the advanced fixture, not claimed compatible with all
+Horizon functions or a complete game build.
+
+Version 0.3.0 adds lexical capture, call-bounded slices, reusable field/method
+bridges, MODIFY_ARGS and MODIFY_VARIABLE. See
+[scopes-and-bridges.md](scopes-and-bridges.md) for their contracts. A separate
+two-crate fixture compiles 25 injections and nine bridges from two independent
+mods, with eight runtime tests. The 44 engine integration tests include all
+earlier cases and positive/negative capture scope, declaration shadowing,
+inferred types, owned moves, mutable borrows, native privacy, associated/trait
+invokers, bridge name collisions, slice bounds, tuple composition, scalar loads
+and owned STORE destruction. Plan/source snapshots use schema 3. Rustfmt,
+clippy with warnings denied and the phase-0 privacy/cycle checks pass.
+
+The scoped fixture measured:
+
+| Scenario | Transform/stage wall | Cargo compile | Cargo build + tests |
+|---|---:|---:|---:|
+| First modded build | 0.085 s | 0.19 s | 0.242 s |
+| Unchanged run | 0.082 s | 0.00 s | 0.047 s |
+
+The unchanged run retained the stage. Raw reports are under
+`target/scoped-v030-{first,unchanged}.json`. Measurements are specific to this
+tiny fixture and machine, not estimates for the full game.
+
+The 0.3.0 pinned Horizon HEAD regression again passed 116 tests with two ignored
+upstream benchmarks. First-stage transformation took 0.374 s, compilation
+2.60 s and Cargo-plus-tests 12.369 s. Its unchanged run retained the stage,
+reported 0.02 s compilation and took 9.574 s including tests; baseline library
+compilation/tests took 12.037 s. Raw logs/reports are under
+`target/horizon-prototype-v030`. This verifies existing isolated `horizon-core`
+integration; the five new features are exercised by the scoped fixture. The
+upstream checkout and Minecraft assets were not modified or used.
+
+Version 0.4.0 adds lifetime-only impl method identities, HEAD over preserved
+closure/`?` bodies and self-contained support modules. Its 48 integration tests
+include two-mod lifetime HEAD order, error propagation, exactly-once Drop,
+cancellation, module conflicts, scope restrictions and source/plan snapshots.
+Rustfmt, clippy with warnings denied, and privacy/cycle feasibility checks pass.
+The separate Veinminer 0.2.0 port now consumes a real TOML bundle: three HEAD
+hooks and one runtime module. The complete pinned Horizon game binary
+type-checks, and its 13 embedded mining tests pass. A canonical AST audit
+verifies all other original syntax is preserved. First native check/test Cargo
+wall times were 25.882 s / 49.394 s; full-workspace plan plus apply cost about
+26 s including two planner passes. These measurements cover source builds and
+tests without game assets; live gameplay remains unverified.

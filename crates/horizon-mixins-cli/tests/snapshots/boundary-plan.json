@@ -1,0 +1,103 @@
+{
+  "schema": 4,
+  "transformer": "0.4.0",
+  "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+  "inputs": {
+    "Cargo.lock": "40777af0bd0e981e825291ef434d33605137cbd48dc6a3b105f7a4ee32d6ed5d",
+    "Cargo.toml": "660f90cea2b8071387d62b12a3fce0dbb6e15860c4e591bb9f082699e3089dc8",
+    "README.md": "a66f96ca000bb3c8875ea56e4c1a6ec6c2882faff68545cd2fa3ee9a141f879f",
+    "driver/Cargo.toml": "5dfb59da1296b0241042b253e29b9919334f182d4345edf9d447aaa986a4d1f1",
+    "driver/src/lib.rs": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "engine/Cargo.toml": "07811121bb661c1249d453393466a198774b18a5d44aee76b46315093ec828b9",
+    "engine/src/boundary.rs": "4d4620125f3f433941d4a6d9a09a6ff30923df7ea02e9f9afe4990eeaca64b00",
+    "engine/src/calls.rs": "faff9941072b5cfd930b244186678961fe018b2b014bea74826f11a52f9a62ca",
+    "engine/src/entity.rs": "3bc25246197a3d1b0229886ffa44d3d55978a3fecdaa5583c469f5a3c0a60d4d",
+    "engine/src/inline/leaf.rs": "0709616eb18ff2bc20b45ae0796a69cefc9cba95fcfae4ab81cc94f7c38f8402",
+    "engine/src/lib.rs": "aa186472c2885ca6a6ee9489ca3e85890b892f3e4227237c85e652b675d25f31",
+    "engine/src/replacement.rs": "d80d65b40579c60b68c06c2cf306dab6ef1b59e4e6f402f840c7e854cd7a4707",
+    "rust-toolchain.toml": "28ba63ba51f7635afd6b0663f2613a1037ab602a039a889e991b1164b84d4714"
+  },
+  "injections": [
+    {
+      "mod_id": "alpha",
+      "mod_version": "1",
+      "injection_id": "head",
+      "priority": 100,
+      "target": "fixture_game::boundary::Host<'_>::run",
+      "file": "engine/src/boundary.rs",
+      "node": [
+        5,
+        0
+      ],
+      "function_fingerprint": "12819612fc8bcfdfb0193bb1d1d21c77d51d30e511a1fba96ca6f17046353107",
+      "kind": "HEAD",
+      "cancellable": false,
+      "argument": null,
+      "constant_site": null,
+      "contract": {
+        "output": "()",
+        "value": null,
+        "operation": null
+      },
+      "call_site": null,
+      "site_fingerprint": null,
+      "selector": null,
+      "ordinal": null,
+      "require": null,
+      "helper_source": "fn head(host: &mut Host<'_>) { host.log.borrow_mut().push(\"alpha\"); support::touch(); }",
+      "bindings": [
+        {
+          "name": "host",
+          "ty": "&mut Host<'_>",
+          "value": "&mut *self"
+        }
+      ]
+    },
+    {
+      "mod_id": "beta",
+      "mod_version": "1",
+      "injection_id": "head",
+      "priority": 50,
+      "target": "fixture_game::boundary::Host<'_>::run",
+      "file": "engine/src/boundary.rs",
+      "node": [
+        5,
+        0
+      ],
+      "function_fingerprint": "12819612fc8bcfdfb0193bb1d1d21c77d51d30e511a1fba96ca6f17046353107",
+      "kind": "HEAD",
+      "cancellable": false,
+      "argument": null,
+      "constant_site": null,
+      "contract": {
+        "output": "()",
+        "value": null,
+        "operation": null
+      },
+      "call_site": null,
+      "site_fingerprint": null,
+      "selector": null,
+      "ordinal": null,
+      "require": null,
+      "helper_source": "fn head(host: &mut Host<'_>) { host.log.borrow_mut().push(\"beta\"); support::touch(); }",
+      "bindings": [
+        {
+          "name": "host",
+          "ty": "&mut Host<'_>",
+          "value": "&mut *self"
+        }
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "mod_id": "alpha",
+      "mod_version": "1",
+      "module_id": "runtime",
+      "file": "engine/src/boundary.rs",
+      "name": "support",
+      "fingerprint": "0c722f9460cf9c81063f5529717647f01bb55a033b5d6185ff5e139ebd7b98e2",
+      "source": "pub fn touch() {}\n"
+    }
+  ]
+}

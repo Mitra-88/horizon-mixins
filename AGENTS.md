@@ -1,6 +1,6 @@
 # Codex implementation instructions
 
-This repo is a **design specification only**. Read every doc before coding. Do not implement launcher integration before a small compilation-tested prototype.
+This repo now contains a compilation-tested MVP. Read every doc before coding. Do not implement launcher integration before a small compilation-tested prototype.
 
 ## Highest-priority outcome
 A working CLI that rewrites a tiny pinned Rust workspace where **two independently declared mods inject into the same function**. Staged output must compile, run tests and be deterministic.
@@ -12,7 +12,7 @@ A working CLI that rewrites a tiny pinned Rust workspace where **two independent
 - Start with declarative TOML, *not* proc-macro attributes.
 - Index free functions, inline/external modules, inherent methods and trait impl methods; reject unresolved cfg and ambiguous paths.
 - Resolve every injection **against pristine original AST** before rewriting. Sort same-site inserts by priority descending, mod ID ascending, injection ID ascending. Reject competing OVERWRITE and OVERWRITE mixed with insertion.
-- Implement HEAD, BEFORE_CALL and OVERWRITE only. Syntactic call selectors require explicit match counts and ordinals; never silently skip.
+- The baseline implements HEAD, BEFORE_CALL and OVERWRITE. The user-authorized extension adds cancellable HEAD, RETURN, MODIFY_ARG, MODIFY_CONSTANT and WRAP_OPERATION; follow docs/advanced-injections.md. The next user-authorized extension adds local capture, accessor/invoker bridges, slices, MODIFY_ARGS and MODIFY_VARIABLE; follow docs/scopes-and-bridges.md. Version 0.4.0 adds lifetime-method HEAD support and support modules; follow docs/boundary-head-and-modules.md. Syntactic call selectors require explicit match counts and ordinals; never silently skip.
 - Test preservation of expression return value and exactly-once argument evaluation. Reject unsupported macro-expanded sites, closures/async cases not proven safe.
 - Respect Rust privacy and crate dependency cycles: generated same-crate bridge or another tested approach, not magical cross-crate private access.
 - Atomic staging, unchanged-file mtime preservation and locked Cargo target dirs.

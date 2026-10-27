@@ -347,9 +347,9 @@ fn negative_planning_diagnostics_are_actionable() {
         ),
         (
             "closure",
-            "engine/src/entity.rs",
-            "entity.velocity += 1;",
-            "let _closure = || 1;",
+            "engine/src/calls.rs",
+            "let first = consume(next(evaluations, log));",
+            "let _closure = || 1; let first = consume(next(evaluations, log));",
             "E_UNSUPPORTED_CONTROL_FLOW",
         ),
         (
@@ -646,15 +646,15 @@ fn cfg_attributes_shared_module_sources_and_shadowing_fail_closed() {
             "E_INVALID_BINDING",
         ),
         (
-            "engine/src/entity.rs",
-            "entity.velocity += 1;",
-            "let _value = unknown()?;",
+            "engine/src/calls.rs",
+            "let first = consume(next(evaluations, log));",
+            "let _value = unknown()?; let first = consume(next(evaluations, log));",
             "E_UNSUPPORTED_CONTROL_FLOW",
         ),
         (
-            "engine/src/entity.rs",
-            "entity.velocity += 1;",
-            "let _value = &unknown();",
+            "engine/src/calls.rs",
+            "let first = consume(next(evaluations, log));",
+            "let _value = &unknown(); let first = consume(next(evaluations, log));",
             "E_UNSUPPORTED_CONTROL_FLOW",
         ),
         (
@@ -788,3 +788,12 @@ fn receiver_and_result_drop_order() {
             .contains("5 passed")
     );
 }
+
+#[path = "cases/advanced.rs"]
+mod advanced;
+
+#[path = "cases/scoped.rs"]
+mod scoped;
+
+#[path = "cases/boundary.rs"]
+mod boundary;

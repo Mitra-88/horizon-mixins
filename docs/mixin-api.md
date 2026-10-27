@@ -34,7 +34,8 @@ other staged inputs also have SHA-256 fingerprints in the plan.
 
 Helper paths must be relative to their manifest directory, without traversal
 or escapes through symlinks. A helper file contains exactly one private,
-synchronous, safe, non-generic function without attributes. It becomes a local
+synchronous, safe function without attributes or explicit generic parameters.
+WRAP_OPERATION's continuation parameter uses `impl FnOnce` as specified below. It becomes a local
 function in a separate block inside the target. Independent helpers can use
 the same Rust function name. Module types, imports and private fields are in
 scope; outer function locals and `Self` are not implicit context.
@@ -48,15 +49,22 @@ fn before(log: &mut Vec<&'static str>) {
 Every helper argument needs a binding in declaration order. `name` and `ty`
 must exactly match its parsed parameter name/type. `value` is a target parameter,
 its borrow, or explicit dereference/reborrow (`self`, `&self`, `&mut *entity`).
-Calls, fields and arbitrary locals are not binding expressions. Use explicit
-concrete types in helper signatures. BEFORE_CALL rejects parameter shadowing.
+Calls and fields are not binding expressions. Local declarations use the explicit
+capture selectors below. Use concrete types in helper signatures. A parameter
+binding must still refer to that parameter at each selected site; shadowing there
+is rejected.
 Rust compilation validates the actual types, mutability, lifetimes and moves.
+Value/operation bindings beginning with `$` are described in
+[advanced-injections.md](advanced-injections.md). Local selectors
+`$local:NAME:ORDINAL`, `$local_ref:NAME:ORDINAL` and `$local_mut:NAME:ORDINAL`
+are documented in [scopes-and-bridges.md](scopes-and-bridges.md).
 
 HEAD inserts helper calls before the original first statement. BEFORE_CALL
 inserts before receiver/callee and argument evaluation, preserving one original
 call as the final expression. OVERWRITE replaces only the body with a helper
-call as its tail, retaining the original attributes/signature. Insertion helpers
-return `()`; overwrite return compatibility is checked by Cargo. HEAD and
+call as its tail, retaining the original attributes/signature. Ordinary insertion helpers
+return `()`; cancellable HEAD and value/wrapper helpers follow their typed
+contracts. Overwrite return compatibility is checked by Cargo. HEAD and
 OVERWRITE do not accept selector/count/ordinal fields.
 
 Function IDs include Cargo target name (hyphens become underscores), module,
@@ -69,9 +77,11 @@ impl identity, and function:
 | Trait impl method | `fixture_game::entity::<Entity as Marker>::marked` |
 
 Selectors are syntax, not semantic resolution: `consume`, `crate::consume`,
-`entity.apply_friction`, or `make_receiver(evaluations).take`. Whitespace is not
-accepted. `require` counts all exact matches in the original body, and
-`ordinal` selects one in AST preorder. A selector is never matched against an
+`entity.apply_friction`, or `make_receiver(evaluations).take`. Whitespace outside literals is not accepted. Spaces inside literal strings are
+preserved and significant. `require` counts all exact matches in the original body, and
+`ordinal` selects one in AST preorder. With a slice, this count and ordinal apply
+inside the original region; each boundary has its own global count and ordinal.
+A selector is never matched against an
 injected helper. Counts and ordinals are mandatory even when only one match
 is expected. Bare method names do not match qualified receiver expressions.
 
@@ -83,6 +93,21 @@ references are outside the proven MVP subset. Generic, const, unsafe and
 foreign-ABI target functions are also rejected. Feature-gated module trees
 and Cargo targets are not guessed or expanded.
 
+The advanced API implements cancellable HEAD, RETURN, MODIFY_ARG,
+MODIFY_CONSTANT and WRAP_OPERATION; see [contracts and runnable
+examples](advanced-injections.md). Version 0.3.0 adds local capture, slices,
+MODIFY_ARGS, MODIFY_VARIABLE and reusable accessor/invoker bridges; see
+[scoped contracts and examples](scopes-and-bridges.md). A bundle may contain
+injections, bridges, or both; IDs are unique across both lists in a bundle.
+Plans use schema 4, including lexical identities, original expression
+coordinates, resolved regions and versioned bridge metadata. Regenerate older
+plans after upgrading.
+
 Future attribute syntax, additional dependencies, arbitrary helper modules,
-semantic selectors, AFTER_CALL, RETURN, REDIRECT, MODIFY_ARG and
-MODIFY_VARIABLE require separate specifications and tests.
+semantic selectors, AFTER_CALL, REDIRECT and structural state changes require separate
+specifications and tests. The [SpongePowered feature map](spongepowered-feature-gaps.md)
+documents the remaining gaps.
+
+HEAD has a compilation-tested exception for preserved closure/`?` bodies and
+lifetime-bearing impls. Version 0.4.0 also adds `[[module]]` for shared same-crate
+implementation code. See [boundary contracts](boundary-head-and-modules.md).

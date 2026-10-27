@@ -1,0 +1,79 @@
+[mod]
+id = "beta"
+version = "0.1.0"
+priority = 50
+
+[[injection]]
+id = "last"
+target = "advanced_game::calculate"
+kind = "HEAD"
+helper = "last.rs"
+priority = 0
+bindings = [{ name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+
+[[injection]]
+id = "cancel"
+target = "advanced_game::calculate"
+kind = "HEAD"
+helper = "cancel.rs"
+cancellable = true
+priority = 150
+bindings = [{ name = "input", ty = "i32", value = "input" }, { name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+
+[[injection]]
+id = "return"
+target = "advanced_game::calculate"
+kind = "RETURN"
+helper = "return.rs"
+bindings = [{ name = "value", ty = "i32", value = "$value" }, { name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+
+[[injection]]
+id = "argument-owned"
+target = "advanced_game::arguments"
+kind = "MODIFY_ARG"
+helper = "argument-owned.rs"
+selector = "sink"
+require = 1
+ordinal = 0
+argument = 0
+bindings = [{ name = "value", ty = "String", value = "$value" }, { name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+
+[[injection]]
+id = "constant"
+target = "advanced_game::constants"
+kind = "MODIFY_CONSTANT"
+helper = "constant.rs"
+selector = "3"
+require = 2
+ordinal = 1
+bindings = [{ name = "value", ty = "i32", value = "$value" }]
+
+[[injection]]
+id = "wrap-owned"
+target = "advanced_game::wrapping"
+kind = "WRAP_OPERATION"
+helper = "wrap-owned.rs"
+selector = "original_owned"
+require = 1
+ordinal = 0
+bindings = [{ name = "value", ty = "String", value = "$arg0" }, { name = "trace", ty = "Trace", value = "$arg1" }, { name = "original", ty = "impl FnOnce(String, Trace) -> String", value = "$operation" }]
+
+[[injection]]
+id = "wrap-method"
+target = "advanced_game::wrapping_method"
+kind = "WRAP_OPERATION"
+helper = "wrap-method.rs"
+selector = "counter.apply_traced"
+require = 1
+ordinal = 0
+bindings = [{ name = "counter", ty = "&mut Counter", value = "$receiver" }, { name = "value", ty = "i32", value = "$arg0" }, { name = "trace", ty = "Trace", value = "$arg1" }, { name = "original", ty = "impl FnOnce(&mut Counter, i32, Trace) -> i32", value = "$operation" }]
+
+[[injection]]
+id = "wrap-self"
+target = "advanced_game::Counter::wrapped_self"
+kind = "WRAP_OPERATION"
+helper = "wrap-self.rs"
+selector = "self.apply_traced"
+require = 1
+ordinal = 0
+bindings = [{ name = "counter", ty = "&mut Counter", value = "$receiver" }, { name = "value", ty = "i32", value = "$arg0" }, { name = "trace", ty = "Trace", value = "$arg1" }, { name = "original", ty = "impl FnOnce(&mut Counter, i32, Trace) -> i32", value = "$operation" }]

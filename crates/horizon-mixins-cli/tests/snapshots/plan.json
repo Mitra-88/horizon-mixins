@@ -1,6 +1,7 @@
 {
   "injections": [
     {
+      "argument": null,
       "bindings": [
         {
           "name": "log",
@@ -9,6 +10,14 @@
         }
       ],
       "call_site": 2,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 6,
       "file": "engine/src/calls.rs",
       "function_fingerprint": "b941316339d89602f5b6a49c22b95106b7f9ee95521080f783dd5a54f4e555a0",
       "helper_source": "fn before(log: &mut Vec<&'static str>) {\n    // This call must never become another mod's selector match.\n    let _ = consume(0);\n    log.push(\"alpha-before\");\n}\n",
@@ -27,6 +36,7 @@
       "target": "fixture_game::calls::compute"
     },
     {
+      "argument": null,
       "bindings": [
         {
           "name": "log",
@@ -35,6 +45,14 @@
         }
       ],
       "call_site": 2,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 6,
       "file": "engine/src/calls.rs",
       "function_fingerprint": "b941316339d89602f5b6a49c22b95106b7f9ee95521080f783dd5a54f4e555a0",
       "helper_source": "fn before(log: &mut Vec<&'static str>) { log.push(\"beta-before\"); }\n",
@@ -53,6 +71,7 @@
       "target": "fixture_game::calls::compute"
     },
     {
+      "argument": null,
       "bindings": [
         {
           "name": "log",
@@ -61,6 +80,14 @@
         }
       ],
       "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 0,
       "file": "engine/src/calls.rs",
       "function_fingerprint": "a55eb4368e3ac36f776057a277b207ccd5f69bcae0974eebd1ef6b081c4782a0",
       "helper_source": "fn before(log: &mut Vec<&'static str>) {\n    // This call must never become another mod's selector match.\n    let _ = consume(0);\n    log.push(\"alpha-before\");\n}\n",
@@ -79,6 +106,7 @@
       "target": "fixture_game::calls::method_compute"
     },
     {
+      "argument": null,
       "bindings": [
         {
           "name": "entity",
@@ -87,6 +115,13 @@
         }
       ],
       "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
       "file": "engine/src/entity.rs",
       "function_fingerprint": "d6a07cd9f6453e017191cf70eab3ee54ca6226ef13c67537b89a824ad5fcba93",
       "helper_source": "fn tick(entity: &mut Entity) { entity.velocity += 1; }\n",
@@ -106,6 +141,7 @@
       "target": "fixture_game::entity::Entity::tick"
     },
     {
+      "argument": null,
       "bindings": [
         {
           "name": "entity",
@@ -114,6 +150,13 @@
         }
       ],
       "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
       "file": "engine/src/entity.rs",
       "function_fingerprint": "5a591d2321b97f60705703ddccb094b87716afeac6a2d6398bdeca6042726a98",
       "helper_source": "fn observe(entity: &Entity) { let _ = entity.velocity; }\n",
@@ -133,6 +176,7 @@
       "target": "fixture_game::entity::<Entity as Marker>::marked"
     },
     {
+      "argument": null,
       "bindings": [
         {
           "name": "entity",
@@ -141,6 +185,13 @@
         }
       ],
       "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
       "file": "engine/src/entity.rs",
       "function_fingerprint": "5456dccec0b252785f86534280d36304e49b60d1c8ae30bcc853ec28baa860f7",
       "helper_source": "fn head(entity: &mut Entity) {\n    entity.log.push(\"alpha\");\n    entity.velocity *= 2;\n}\n",
@@ -159,6 +210,7 @@
       "target": "fixture_game::entity::advance"
     },
     {
+      "argument": null,
       "bindings": [
         {
           "name": "entity",
@@ -167,6 +219,13 @@
         }
       ],
       "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
       "file": "engine/src/entity.rs",
       "function_fingerprint": "5456dccec0b252785f86534280d36304e49b60d1c8ae30bcc853ec28baa860f7",
       "helper_source": "fn head(entity: &mut Entity) {\n    entity.log.push(\"beta\");\n    entity.velocity += 3;\n}\n",
@@ -185,6 +244,7 @@
       "target": "fixture_game::entity::advance"
     },
     {
+      "argument": null,
       "bindings": [
         {
           "name": "input",
@@ -193,6 +253,13 @@
         }
       ],
       "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": null
+      },
       "file": "engine/src/replacement.rs",
       "function_fingerprint": "1a21793757ea38555e338cc1d8d8a4228a229240c4245c21dfe3edba45e77e6b",
       "helper_source": "fn replace(input: i32) -> i32 { input * 7 }\n",
@@ -211,6 +278,6 @@
       "target": "fixture_game::overwrite::value"
     }
   ],
-  "schema": 1,
-  "transformer": "0.1.0"
+  "schema": 4,
+  "transformer": "0.4.0"
 }

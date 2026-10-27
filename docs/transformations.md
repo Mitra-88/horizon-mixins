@@ -62,3 +62,36 @@ Diagnostics carry code/message and applicable file, mod, injection, target and
 selector. The CLI exits nonzero and prints JSON on stderr. Source and plan
 snapshots live in `crates/horizon-mixins-cli/tests/snapshots`; update deliberately
 with `UPDATE_SNAPSHOTS=1 cargo test --workspace --locked`.
+
+Version 0.2.0 adds [advanced injection contracts](advanced-injections.md).
+Value modifiers use a scoped function-item callee with original values as
+ordinary call arguments, avoiding an added block around original expressions.
+Operation wrappers use typed, generated FnOnce continuations. Return modifiers
+run on explicit exits, implicit tails and cancelled HEAD results; generated
+helper/continuation returns are not revisited. Current schema-4 plans store
+value/output contracts, argument indices and original constant coordinates,
+plus lexical/access identities, captures, resolved regions and bridge metadata.
+Regenerate older plans after upgrading.
+
+`E_ARGUMENT` diagnoses invalid MODIFY_ARG indices; `E_VALUE_SIGNATURE` and
+`E_OPERATION_SIGNATURE` diagnose incompatible composition. Function definitions
+and bindings beginning `__horizon_mixins_` are reserved (`E_RESERVED_NAME`);
+references to generated bridge APIs are allowed. The original cfg/macro/
+source safety checks and exclusive-overwrite rule remain in force.
+
+Version 0.3.0 implements [scoped injections and bridges](scopes-and-bridges.md).
+Scopes resolve declaration identities before rewriting, so a capture cannot
+silently bind a shadowing declaration. Variable LOAD and STORE phases use
+original expression coordinates; LOAD runs before STORE if both select one
+expression. Individual argument modifiers precede tuple modifiers and operation
+wrappers. Slices filter original sites between validated call boundaries before
+the injection's own count/ordinal checks. Namespaced public bridge methods are
+appended to the owning module after function rewriting. Bridges delegate to the
+staged method, including any planned body changes, and require no Cargo edge.
+
+`E_LOCAL_NOT_FOUND`, `E_LOCAL_NOT_VISIBLE`, `E_CAPTURE_TYPE` and
+`E_UNSUPPORTED_LOCAL` diagnose lexical/access limitations. `E_VARIABLE_TYPE`
+and `E_ARGUMENT_SIGNATURE` diagnose value/tuple contracts. `E_SLICE_*` errors
+describe invalid boundaries, scopes and order; `E_BRIDGE_TARGET` and
+`E_BRIDGE_CONFLICT` describe unsupported owners/signatures and name collisions.
+Rust type, lifetime, borrowing and move errors still come from staged Cargo.

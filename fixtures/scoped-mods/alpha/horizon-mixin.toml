@@ -1,0 +1,221 @@
+[mod]
+id = "alpha"
+version = "0.1.0"
+priority = 100
+
+[[injection]]
+id = "capture"
+kind = "BEFORE_CALL"
+target = "scoped_game::locals"
+helper = "capture.rs"
+bindings = [{ name = "value", ty = "&mut i32", value = "$local_mut:value:0" }, { name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+selector = "tick"
+require = 3
+ordinal = 0
+
+[[injection]]
+id = "after"
+kind = "BEFORE_CALL"
+target = "scoped_game::locals"
+helper = "after.rs"
+bindings = [{ name = "value", ty = "&mut i32", value = "$local_mut:value:0" }, { name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+selector = "tick"
+require = 3
+ordinal = 2
+
+[[injection]]
+id = "inferred"
+kind = "BEFORE_CALL"
+target = "scoped_game::inferred"
+helper = "inferred.rs"
+bindings = [{ name = "value", ty = "&mut i32", value = "$local_mut:n:0" }]
+selector = "tick"
+require = 1
+ordinal = 0
+
+[[injection]]
+id = "return-local"
+kind = "RETURN"
+target = "scoped_game::return_local"
+helper = "return-local.rs"
+bindings = [{ name = "value", ty = "i32", value = "$value" }, { name = "extra", ty = "&i32", value = "$local_ref:extra:0" }, { name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+
+[[injection]]
+id = "init"
+kind = "MODIFY_VARIABLE"
+target = "scoped_game::variables"
+helper = "init.rs"
+bindings = [{ name = "value", ty = "i32", value = "$value" }, { name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+variable = { name = "health", ordinal = 0, at = "STORE" }
+require = 2
+ordinal = 0
+
+[[injection]]
+id = "store"
+kind = "MODIFY_VARIABLE"
+target = "scoped_game::variables"
+helper = "store.rs"
+bindings = [{ name = "value", ty = "i32", value = "$value" }, { name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+variable = { name = "health", ordinal = 0, at = "STORE" }
+require = 2
+ordinal = 1
+
+[[injection]]
+id = "variable-return"
+kind = "RETURN"
+target = "scoped_game::variables"
+helper = "variable-return.rs"
+bindings = [{ name = "value", ty = "i32", value = "$value" }, { name = "health", ty = "&i32", value = "$local_ref:health:0" }, { name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+
+[[injection]]
+id = "parameter-store"
+kind = "MODIFY_VARIABLE"
+target = "scoped_game::parameter"
+helper = "parameter-store.rs"
+bindings = [{ name = "value", ty = "i32", value = "$value" }]
+variable = { name = "count", ordinal = 0, at = "STORE", parameter = true }
+require = 1
+ordinal = 0
+
+[[injection]]
+id = "parameter-load"
+kind = "MODIFY_VARIABLE"
+target = "scoped_game::parameter"
+helper = "parameter-load.rs"
+bindings = [{ name = "value", ty = "i32", value = "$value" }]
+variable = { name = "count", ordinal = 0, at = "LOAD", parameter = true }
+require = 2
+ordinal = 1
+
+[[injection]]
+id = "slice-arg"
+kind = "MODIFY_ARG"
+target = "scoped_game::sliced"
+helper = "slice-arg.rs"
+bindings = [{ name = "value", ty = "i32", value = "$value" }]
+selector = "consume"
+require = 1
+ordinal = 0
+argument = 0
+slice = { from = { selector = "begin", require = 1, ordinal = 0 }, to = { selector = "end", require = 1, ordinal = 0 } }
+
+[[injection]]
+id = "slice-capture"
+kind = "BEFORE_CALL"
+target = "scoped_game::sliced"
+helper = "slice-capture.rs"
+bindings = [{ name = "first", ty = "&i32", value = "$local_ref:first:0" }, { name = "log", ty = "&mut Vec<&'static str>", value = "&mut *log" }]
+selector = "consume"
+require = 1
+ordinal = 0
+slice = { from = { selector = "begin", require = 1, ordinal = 0 }, to = { selector = "end", require = 1, ordinal = 0 } }
+
+[[injection]]
+id = "tuple"
+kind = "MODIFY_ARGS"
+target = "scoped_game::jointly"
+helper = "tuple.rs"
+bindings = [{ name = "args", ty = "(String,i32,Trace)", value = "$args" }, { name = "bonus", ty = "&i32", value = "$local_ref:bonus:0" }]
+selector = "combine"
+require = 1
+ordinal = 0
+result = "String"
+
+[[injection]]
+id = "single"
+kind = "MODIFY_ARG"
+target = "scoped_game::jointly"
+helper = "single.rs"
+bindings = [{ name = "value", ty = "i32", value = "$value" }]
+selector = "combine"
+require = 1
+ordinal = 0
+argument = 1
+
+[[injection]]
+id = "wrap"
+kind = "WRAP_OPERATION"
+target = "scoped_game::jointly"
+helper = "wrap.rs"
+bindings = [{ name = "value", ty = "String", value = "$arg0" }, { name = "number", ty = "i32", value = "$arg1" }, { name = "trace", ty = "Trace", value = "$arg2" }, { name = "original", ty = "impl FnOnce(String,i32,Trace)->String", value = "$operation" }]
+selector = "combine"
+require = 1
+ordinal = 0
+
+[[injection]]
+id = "method-tuple"
+kind = "MODIFY_ARGS"
+target = "scoped_game::method"
+helper = "method-tuple.rs"
+bindings = [{ name = "args", ty = "(i32,Trace)", value = "$args" }]
+selector = "entity.add_traced"
+require = 1
+ordinal = 0
+result = "i32"
+
+[[injection]]
+id = "reborrow"
+kind = "MODIFY_ARGS"
+target = "scoped_game::reborrow"
+helper = "reborrow.rs"
+bindings = [{ name = "args", ty = "(&mut i32,i32)", value = "$args" }]
+selector = "add_to"
+require = 1
+ordinal = 0
+result = "i32"
+
+[[injection]]
+id = "owned-drop"
+kind = "MODIFY_ARGS"
+target = "scoped_game::owned_drop"
+helper = "owned-drop.rs"
+bindings = [{ name = "args", ty = "(Token,i32)", value = "$args" }]
+selector = "consume_token"
+require = 1
+ordinal = 0
+result = "i32"
+
+[[injection]]
+id = "temporary"
+kind = "MODIFY_ARGS"
+target = "scoped_game::temporary"
+helper = "temporary.rs"
+bindings = [{ name = "args", ty = "(i32,i32)", value = "$args" }, { name = "trace", ty = "&Trace", value = "trace" }]
+selector = "add"
+require = 1
+ordinal = 0
+result = "i32"
+
+[[bridge]]
+id = "get-health"
+kind = "GET"
+target = "scoped_game::state::Entity"
+member = "health"
+
+[[bridge]]
+id = "get-health-mut"
+kind = "GET_MUT"
+target = "scoped_game::state::Entity"
+member = "health"
+
+[[bridge]]
+id = "set-health"
+kind = "SET"
+target = "scoped_game::state::Entity"
+member = "health"
+
+[[bridge]]
+id = "get-name"
+kind = "GET"
+target = "scoped_game::state::Entity"
+member = "name"
+
+[[bridge]]
+id = "inc"
+kind = "INVOKE"
+target = "scoped_game::state::Entity::inc"
+
+[[bridge]]
+id = "create"
+kind = "INVOKE"
+target = "scoped_game::state::Entity::create"

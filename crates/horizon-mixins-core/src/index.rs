@@ -10,6 +10,7 @@ use syn::{Attribute, Block, FnArg, Item, Signature};
 #[derive(Debug, Clone)]
 pub struct Function {
     pub id: String,
+    pub module: String,
     pub file: String,
     /// Item indices, descending through inline modules and ending at a function or impl method.
     pub node: Vec<usize>,
@@ -18,14 +19,28 @@ pub struct Function {
     pub unsupported_cfg: bool,
     pub unsupported_macro: bool,
     pub generic_impl: bool,
+    pub self_type: Option<syn::Type>,
 }
 #[derive(Debug)]
 pub struct Index {
     pub functions: Vec<Function>,
+    pub types: Vec<TypeDefinition>,
     pub blocked: BTreeSet<String>,
     pub macro_modules: BTreeSet<String>,
     pub files: BTreeMap<String, syn::File>,
+    pub source_owners: BTreeMap<String, BTreeSet<String>>,
 }
+#[derive(Debug, Clone)]
+pub struct TypeDefinition {
+    pub id: String,
+    pub module: String,
+    pub file: String,
+    pub node: Vec<usize>,
+    pub item: syn::ItemStruct,
+    pub unsupported_cfg: bool,
+    pub unsupported_macro: bool,
+}
+
 pub fn tokens(value: &impl ToTokens) -> String {
     value.to_token_stream().to_string()
 }
@@ -106,9 +121,11 @@ impl Index {
         }
         let mut index = Self {
             functions: Vec::new(),
+            types: Vec::new(),
             blocked: BTreeSet::new(),
             macro_modules: BTreeSet::new(),
             files: BTreeMap::new(),
+            source_owners: BTreeMap::new(),
         };
         for package in &metadata.packages {
             if !metadata.workspace_members.contains(&package.id) {
@@ -183,6 +200,10 @@ impl Index {
         if macro_attributes(&tree.attrs) {
             self.macro_modules.insert(format!("@{prefix}"));
         }
+        self.source_owners
+            .entry(file.clone())
+            .or_default()
+            .insert(prefix.into());
         self.files.insert(file, tree);
         active.remove(&path);
         Ok(())
@@ -205,6 +226,7 @@ impl Index {
             match item {
                 Item::Fn(f) => self.functions.push(Function {
                     id: format!("{prefix}::{}", f.sig.ident),
+                    module: prefix.into(),
                     file: file.into(),
                     node,
                     signature: f.sig.clone(),
@@ -212,6 +234,7 @@ impl Index {
                     unsupported_cfg: inherited_cfg || cfg(&f.attrs),
                     unsupported_macro: macro_attributes(&f.attrs),
                     generic_impl: false,
+                    self_type: None,
                 }),
                 Item::Mod(m) => {
                     let next = format!("{prefix}::{}", m.ident);
@@ -303,7 +326,17 @@ impl Index {
                     }
                 }
                 Item::Impl(imp) => {
-                    let ty = tokens(&imp.self_ty).replace(' ', "");
+                    let mut identity_type = *imp.self_ty.clone();
+                    struct Lifetimes;
+                    impl syn::visit_mut::VisitMut for Lifetimes {
+                        fn visit_lifetime_mut(&mut self, value: &mut syn::Lifetime) {
+                            if value.ident != "static" {
+                                *value = syn::parse_quote!('_);
+                            }
+                        }
+                    }
+                    syn::visit_mut::VisitMut::visit_type_mut(&mut Lifetimes, &mut identity_type);
+                    let ty = tokens(&identity_type).replace(' ', "");
                     let identity = if let Some((_, tr, _)) = &imp.trait_ {
                         format!("<{ty} as {}>", tokens(tr).replace(' ', ""))
                     } else {
@@ -315,6 +348,7 @@ impl Index {
                             node.push(j);
                             self.functions.push(Function {
                                 id: format!("{prefix}::{identity}::{}", f.sig.ident),
+                                module: prefix.into(),
                                 file: file.into(),
                                 node,
                                 signature: f.sig.clone(),
@@ -322,10 +356,37 @@ impl Index {
                                 unsupported_cfg: inherited_cfg || cfg(&imp.attrs) || cfg(&f.attrs),
                                 unsupported_macro: macro_attributes(&imp.attrs)
                                     || macro_attributes(&f.attrs),
-                                generic_impl: !imp.generics.params.is_empty(),
+                                generic_impl: imp
+                                    .generics
+                                    .params
+                                    .iter()
+                                    .any(|p| !matches!(p, syn::GenericParam::Lifetime(_)))
+                                    || imp.generics.where_clause.is_some(),
+                                self_type: Some(*imp.self_ty.clone()),
                             });
                         }
                     }
+                }
+                Item::Struct(item) => {
+                    let attrs: Vec<_> = item
+                        .attrs
+                        .iter()
+                        .filter(|a| {
+                            !["derive", "repr", "non_exhaustive"]
+                                .iter()
+                                .any(|n| a.path().is_ident(n))
+                        })
+                        .cloned()
+                        .collect();
+                    self.types.push(TypeDefinition {
+                        id: format!("{prefix}::{}", item.ident),
+                        module: prefix.into(),
+                        file: file.into(),
+                        node,
+                        item: item.clone(),
+                        unsupported_cfg: inherited_cfg || cfg(&item.attrs),
+                        unsupported_macro: macro_attributes(&attrs),
+                    });
                 }
                 Item::Macro(_) => {
                     self.macro_modules.insert(prefix.into());

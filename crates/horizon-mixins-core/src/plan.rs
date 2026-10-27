@@ -1,14 +1,17 @@
 use crate::{
-    Diagnostic, Result,
+    Diagnostic, Result, bridges,
     diagnostic::io,
+    helpers::{self, Contract},
     index::{self, Function, Index, tokens},
     manifest::{self, Binding, Kind},
-    source,
+    scopes::{self, Scopes},
+    sites::{self, Sites},
+    slices, source,
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::Path, process::Command};
 use syn::{
-    Expr, FnArg, Item, ReturnType,
+    Expr, Item,
     visit::{self, Visit},
 };
 
@@ -20,6 +23,21 @@ pub struct Plan {
     pub rustc: String,
     pub inputs: BTreeMap<String, String>,
     pub injections: Vec<PlannedInjection>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bridges: Vec<bridges::PlannedBridge>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub modules: Vec<PlannedModule>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PlannedModule {
+    pub mod_id: String,
+    pub mod_version: String,
+    pub module_id: String,
+    pub file: String,
+    pub name: String,
+    pub fingerprint: String,
+    pub source: String,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -33,6 +51,10 @@ pub struct PlannedInjection {
     pub node: Vec<usize>,
     pub function_fingerprint: String,
     pub kind: Kind,
+    pub cancellable: bool,
+    pub argument: Option<usize>,
+    pub constant_site: Option<usize>,
+    pub contract: Contract,
     /// Preorder call number in the pristine body, never in an already rewritten tree.
     pub call_site: Option<usize>,
     pub site_fingerprint: Option<String>,
@@ -41,29 +63,87 @@ pub struct PlannedInjection {
     pub require: Option<usize>,
     pub helper_source: String,
     pub bindings: Vec<Binding>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub captures: Vec<scopes::Capture>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expression_site: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variable_site: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variable: Option<VariableIdentity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slice: Option<slices::ResolvedSlice>,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VariableIdentity {
+    pub local: scopes::Local,
+    pub at: manifest::Access,
+}
+
 impl Plan {
     /// Validate externally deserialized IR before traversing any AST path.
     pub fn validate_structure(&self) -> Result<()> {
+        let mut modules = std::collections::BTreeSet::new();
+        for m in &self.modules {
+            source::relative(Path::new(&m.file))?;
+            syn::parse_str::<syn::Ident>(&m.name)
+                .map_err(|e| Diagnostic::new("E_MODULE", e.to_string()))?;
+            crate::modules::validate_payload(&m.source)?;
+            if !modules.insert((&m.file, &m.name)) {
+                return Err(Diagnostic::new(
+                    "E_MODULE_CONFLICT",
+                    "duplicate support module",
+                ));
+            }
+        }
         let mut ids = std::collections::BTreeSet::new();
         for p in &self.injections {
             source::relative(Path::new(&p.file))?;
-            let call_fields_valid = match p.kind {
-                Kind::BeforeCall => {
-                    p.call_site.is_some()
-                        && p.site_fingerprint.is_some()
-                        && p.selector.as_ref().is_some_and(|s| !s.is_empty())
-                        && matches!((p.ordinal, p.require), (Some(o), Some(n)) if n > 0 && o < n)
-                }
-                _ => {
-                    p.call_site.is_none()
-                        && p.site_fingerprint.is_none()
-                        && p.selector.is_none()
-                        && p.ordinal.is_none()
-                        && p.require.is_none()
-                }
-            };
+            let call_fields_valid = if p.kind.selects_site() {
+                (if p.kind == Kind::ModifyConstant {
+                    p.constant_site.is_some() && p.call_site.is_none() && p.variable_site.is_none()
+                } else if p.kind == Kind::ModifyVariable {
+                    p.variable_site.is_some() && p.call_site.is_none() && p.constant_site.is_none()
+                } else {
+                    p.call_site.is_some() && p.constant_site.is_none() && p.variable_site.is_none()
+                }) && p.site_fingerprint.is_some()
+                    && (if p.kind == Kind::ModifyVariable {
+                        p.variable.is_some() && p.selector.is_none()
+                    } else {
+                        p.selector.as_ref().is_some_and(|s| !s.is_empty())
+                    })
+                    && p.expression_site.is_some()
+                    && matches!((p.ordinal, p.require), (Some(o), Some(n)) if n > 0 && o < n)
+            } else {
+                p.call_site.is_none()
+                    && p.variable_site.is_none()
+                    && p.expression_site.is_none()
+                    && p.slice.is_none()
+                    && p.constant_site.is_none()
+                    && p.site_fingerprint.is_none()
+                    && p.selector.is_none()
+                    && p.ordinal.is_none()
+                    && p.require.is_none()
+            } && (!p.cancellable || p.kind == Kind::Head)
+                && ((p.kind == Kind::ModifyArg) == p.argument.is_some())
+                && ((p.kind == Kind::WrapOperation) == p.contract.operation.is_some())
+                && ((p.kind == Kind::ModifyArgs) == p.contract.bundle.is_some())
+                && ((p.kind == Kind::ModifyVariable) == p.variable.is_some())
+                && (matches!(
+                    p.kind,
+                    Kind::Return
+                        | Kind::ModifyArg
+                        | Kind::ModifyConstant
+                        | Kind::ModifyArgs
+                        | Kind::ModifyVariable
+                ) == p.contract.value.is_some());
+            let metadata_valid = p.slice.as_ref().is_none_or(|s| {
+                s.start < s.end && p.expression_site.is_some_and(|i| s.start <= i && i < s.end)
+            }) && (p.kind != Kind::ModifyVariable
+                || p.variable_site == p.expression_site);
             if !call_fields_valid
+                || !metadata_valid
                 || p.node.is_empty()
                 || !self.inputs.contains_key(&p.file)
                 || !ids.insert((&p.mod_id, &p.injection_id))
@@ -73,6 +153,18 @@ impl Plan {
                     "invalid call fields, AST path, input file or duplicate injection in plan",
                 )
                 .file(&p.file));
+            }
+        }
+        for b in &self.bridges {
+            source::relative(Path::new(&b.file))?;
+            if b.node.is_empty()
+                || !self.inputs.contains_key(&b.file)
+                || !ids.insert((&b.mod_id, &b.bridge_id))
+            {
+                return Err(Diagnostic::new(
+                    "E_PLAN_SITE",
+                    "invalid bridge location or duplicate id",
+                ));
             }
         }
         Ok(())
@@ -102,6 +194,8 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
         .collect();
     let index = Index::load(&root)?;
     let mut injections = Vec::new();
+    let mut planned_bridges = Vec::new();
+    let mut planned_modules: Vec<PlannedModule> = Vec::new();
     for bundle in mods {
         if let Some(revision) = &bundle.manifest.compatibility.horizon_revision {
             let actual = if root.join(".horizon-revision").is_file() {
@@ -136,6 +230,84 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 .file(&bundle.file));
             }
         }
+        for (module, payload) in bundle.manifest.module.iter().zip(&bundle.modules) {
+            let tree = index.files.get(&module.file).ok_or_else(|| {
+                Diagnostic::new(
+                    "E_MODULE",
+                    "module destination must be an indexed Rust source file",
+                )
+                .file(&module.file)
+            })?;
+            if index::cfg(&tree.attrs) {
+                return Err(Diagnostic::new(
+                    "E_UNSUPPORTED_CFG",
+                    "support module destination has unresolved cfg",
+                ));
+            }
+            if index::macro_attributes(&tree.attrs) {
+                return Err(Diagnostic::new(
+                    "E_UNSUPPORTED_MACRO",
+                    "support module destination has an attribute macro",
+                ));
+            }
+            if index
+                .source_owners
+                .get(&module.file)
+                .is_none_or(|owners| owners.len() != 1)
+            {
+                return Err(Diagnostic::new(
+                    "E_TARGET_AMBIGUOUS",
+                    "support module destination is reused under multiple source identities",
+                ));
+            }
+            crate::modules::validate_destination(tree, &module.name)?;
+            if planned_modules
+                .iter()
+                .any(|m| m.file == module.file && m.name == module.name)
+            {
+                return Err(
+                    Diagnostic::new("E_MODULE_CONFLICT", "competing support modules")
+                        .file(&module.file),
+                );
+            }
+            crate::modules::validate_payload(payload)?;
+            planned_modules.push(PlannedModule {
+                mod_id: bundle.manifest.info.id.clone(),
+                mod_version: bundle.manifest.info.version.clone(),
+                module_id: module.id.clone(),
+                file: module.file.clone(),
+                name: module.name.clone(),
+                fingerprint: source::fingerprint(tokens(tree)),
+                source: payload.clone(),
+            });
+        }
+        for bridge in &bundle.manifest.bridge {
+            let planned = bridges::plan(
+                &index,
+                &bundle.manifest.info.id,
+                &bundle.manifest.info.version,
+                bridge,
+            )
+            .map_err(|mut e| {
+                e.mod_id = Some(bundle.manifest.info.id.clone().into());
+                e.injection_id = Some(bridge.id.clone().into());
+                e.target = Some(bridge.target.clone().into());
+                e.file(&bundle.file)
+            })?;
+            if planned_bridges.iter().any(|p: &bridges::PlannedBridge| {
+                p.owner == planned.owner && p.name == planned.name
+            }) {
+                return Err(Diagnostic::new(
+                    "E_BRIDGE_CONFLICT",
+                    format!(
+                        "duplicate generated method {} on {}",
+                        planned.name, planned.owner
+                    ),
+                )
+                .file(&bundle.file));
+            }
+            planned_bridges.push(planned);
+        }
         for (injection, helper) in bundle.manifest.injection.iter().zip(&bundle.helpers) {
             let context = |e: Diagnostic| {
                 let e = e.injection(&bundle.manifest.info.id, injection);
@@ -146,10 +318,13 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 }
             };
             let f = index.resolve(&injection.target).map_err(context)?;
-            validate_target(f).map_err(context)?;
-            validate_helper(f, injection.kind, helper, &injection.bindings).map_err(context)?;
-            if injection.kind == Kind::BeforeCall {
-                reject_shadowed_parameters(f).map_err(context)?;
+            validate_target(f, injection.kind).map_err(context)?;
+            if injection.kind == Kind::Return
+                && !sites::is_unit(&helpers::return_type(&f.signature))
+                && !matches!(f.block.stmts.last(), Some(syn::Stmt::Expr(_, None)))
+                && !sites::block_always_exits(&f.block)
+            {
+                return Err(context(Diagnostic::new("E_UNSUPPORTED_SITE", "RETURN requires a value tail or syntactically proven explicit exits for a non-unit/aliased result; write an explicit tail expression").file(&f.file)));
             }
             let function_fingerprint =
                 source::fingerprint(format!("{}{}", tokens(&f.signature), tokens(&f.block)));
@@ -166,40 +341,240 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                     ),
                 )));
             }
-            let (call_site, site_fingerprint) = if injection.kind == Kind::BeforeCall {
+            let mut context_function = f.clone();
+            if injection.kind == Kind::Head {
+                context_function.block = syn::parse_quote!({});
+            }
+            let catalog = Sites::in_block(&context_function.block);
+            let scopes = Scopes::analyze(&context_function);
+            if catalog.expressions != scopes.contexts.len() {
+                return Err(context(Diagnostic::new(
+                    "E_SCOPE_INDEX",
+                    "scope/expression coordinates disagree",
+                )));
+            }
+            let slice = injection
+                .slice
+                .as_ref()
+                .map(|s| slices::resolve(s, &catalog, &scopes))
+                .transpose()
+                .map_err(context)?;
+            let inside = |expression: usize| {
+                slice
+                    .as_ref()
+                    .is_none_or(|s| s.start <= expression && expression < s.end)
+            };
+            let variable_selected = if let Some(variable) = &injection.variable {
+                let matches: Vec<_> = scopes
+                    .variable_sites(variable)
+                    .map_err(context)?
+                    .into_iter()
+                    .filter(|s| inside(s.expression))
+                    .collect();
+                if matches.len() != injection.require.unwrap() {
+                    return Err(context(Diagnostic::new(
+                        "E_MATCH_COUNT",
+                        format!(
+                            "variable {} requires {}, found {} accesses",
+                            variable.name,
+                            injection.require.unwrap(),
+                            matches.len()
+                        ),
+                    )));
+                }
+                let site = *matches.get(injection.ordinal.unwrap()).ok_or_else(|| {
+                    context(Diagnostic::new(
+                        "E_ORDINAL",
+                        "variable access ordinal is out of range",
+                    ))
+                })?;
+                if !site.supported || scopes.contexts[site.expression].constant {
+                    return Err(context(Diagnostic::new(
+                        "E_UNSUPPORTED_LOCAL",
+                        "selected variable access is a place/compound write or unsupported context",
+                    )));
+                }
+                Some(site)
+            } else {
+                None
+            };
+            let selected = if injection.kind.selects_site()
+                && injection.kind != Kind::ModifyVariable
+            {
                 let selector = injection.selector.as_ref().unwrap();
-                validate_selector(selector).map_err(context)?;
-                let mut calls = Calls {
-                    all: 0,
-                    selector,
-                    found: Vec::new(),
-                    next_is_root: false,
+                let matches: Vec<_> = if injection.kind == Kind::ModifyConstant {
+                    let key = sites::literal_selector(selector).map_err(context)?;
+                    catalog
+                        .constants
+                        .iter()
+                        .filter(|s| {
+                            inside(s.expression)
+                                && sites::constant_key(&s.expr).as_ref() == Some(&key)
+                        })
+                        .collect()
+                } else {
+                    let expression = sites::parse_call_selector(selector).map_err(context)?;
+                    catalog
+                        .calls
+                        .iter()
+                        .filter(|s| {
+                            inside(s.expression) && sites::call_matches(&s.expr, &expression)
+                        })
+                        .collect()
                 };
-                calls.visit_block(&f.block);
-                let count = injection.require.unwrap();
-                if calls.found.len() != count {
-                    return Err(context(Diagnostic::new("E_MATCH_COUNT", format!("selector '{selector}' requires {count} syntactic matches, found {} in pristine {}", calls.found.len(), f.id)).file(&f.file)));
+                if matches.len() != injection.require.unwrap() {
+                    return Err(context(Diagnostic::new("E_MATCH_COUNT", format!("selector '{selector}' requires {} syntactic matches, found {} in pristine {}", injection.require.unwrap(), matches.len(), f.id)).file(&f.file)));
                 }
                 let ordinal = injection.ordinal.unwrap();
-                let Some((site, fingerprint, eligible)) = calls.found.get(ordinal) else {
-                    return Err(context(
+                let site = matches.get(ordinal).ok_or_else(|| {
+                    context(
                         Diagnostic::new(
                             "E_ORDINAL",
                             format!(
                                 "ordinal {ordinal} is outside 0..{} for '{selector}'",
-                                calls.found.len()
+                                matches.len()
                             ),
                         )
                         .file(&f.file),
-                    ));
-                };
-                if !eligible {
-                    return Err(context(Diagnostic::new("E_UNSUPPORTED_SITE", "BEFORE_CALL requires the complete expression of a statement, a plain let initializer, or a function/block tail; nesting can change temporary drop timing").file(&f.file)));
+                    )
+                })?;
+                if site.const_context {
+                    return Err(context(Diagnostic::new("E_UNSUPPORTED_SITE", "injection cannot introduce runtime helpers into a compile-time array length or const argument").file(&f.file)));
                 }
-                (Some(*site), Some(fingerprint.clone()))
+                if injection.kind == Kind::BeforeCall && !site.whole_expression {
+                    return Err(context(Diagnostic::new("E_UNSUPPORTED_SITE", "BEFORE_CALL requires a complete statement, plain let initializer, or block/function tail; nesting can change temporary drop timing").file(&f.file)));
+                }
+                if injection.kind == Kind::ModifyArg {
+                    let arguments = match &site.expr {
+                        Expr::Call(c) => c.args.len(),
+                        Expr::MethodCall(c) => c.args.len(),
+                        _ => unreachable!(),
+                    };
+                    if injection.argument.unwrap() >= arguments {
+                        return Err(context(Diagnostic::new("E_ARGUMENT", format!("argument {} is outside 0..{arguments}; receiver is not an argument", injection.argument.unwrap())).file(&f.file)));
+                    }
+                }
+                Some(*site)
             } else {
-                (None, None)
+                None
             };
+            let contract = helpers::contract(
+                f,
+                injection.kind,
+                injection.cancellable,
+                helper,
+                &injection.bindings,
+                selected.map(|s| &s.expr),
+                injection.result.as_deref(),
+            )
+            .map_err(context)?;
+            validate_helper(
+                f,
+                injection.kind,
+                injection.cancellable,
+                helper,
+                &injection.bindings,
+                &contract,
+            )
+            .map_err(context)?;
+            let expression_site = variable_selected
+                .map(|s| s.expression)
+                .or_else(|| selected.map(|s| s.expression));
+            let contexts: Vec<_> = if let Some(site) = expression_site {
+                vec![&scopes.contexts[site]]
+            } else if injection.kind == Kind::Return {
+                let mut points: Vec<_> = scopes
+                    .returns
+                    .iter()
+                    .map(|i| &scopes.contexts[*i])
+                    .collect();
+                if !sites::block_always_exits(&f.block) {
+                    points.push(scopes.end.as_ref().unwrap());
+                }
+                points
+            } else {
+                vec![]
+            };
+            let captures = scopes::resolve_bindings(
+                f,
+                &scopes,
+                &injection.bindings,
+                &contexts,
+                injection.kind,
+            )
+            .map_err(context)?;
+            if let Some(variable) = &injection.variable {
+                let local = &scopes.locals[variable_selected.unwrap().local];
+                let value_type = contract.value.as_ref().unwrap();
+                if let Some(ty) = &local.ty
+                    && helpers::normalize_type(&syn::parse_str::<syn::Type>(ty).unwrap())
+                        != helpers::normalize_type(
+                            &syn::parse_str::<syn::Type>(value_type).unwrap(),
+                        )
+                {
+                    return Err(context(Diagnostic::new(
+                        "E_VARIABLE_TYPE",
+                        "variable modifier value type disagrees with its declaration",
+                    )));
+                }
+                if variable.at == manifest::Access::Load
+                    && ![
+                        "bool", "char", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16",
+                        "i32", "i64", "i128", "isize", "f32", "f64",
+                    ]
+                    .contains(&value_type.as_str())
+                {
+                    return Err(context(Diagnostic::new(
+                        "E_UNSUPPORTED_LOCAL",
+                        "LOAD modifiers currently require a primitive scalar value type",
+                    )));
+                }
+            }
+            if (contract.bundle.is_some() || contract.operation.is_some())
+                && let Some(Expr::MethodCall(call)) = selected.map(|s| &s.expr)
+                && let Expr::Path(path) = &*call.receiver
+                && path.path.segments.len() == 1
+            {
+                let name = path.path.segments[0].ident.to_string();
+                if scopes.contexts[expression_site.unwrap()]
+                    .visible
+                    .get(&name)
+                    .is_none_or(|id| !scopes.locals[*id].parameter)
+                {
+                    return Err(context(Diagnostic::new(
+                        "E_INVALID_BINDING",
+                        "receiver parameter is shadowed at this site",
+                    )));
+                }
+            }
+            if let Some(bundle) = &contract.bundle {
+                let mut inputs = bundle.inputs.clone();
+                if let Some(receiver) = &bundle.receiver {
+                    inputs.insert(0, receiver.clone());
+                }
+                validate_operation_site(
+                    f,
+                    &selected.unwrap().expr,
+                    &helpers::Operation {
+                        inputs,
+                        output: bundle.output.clone(),
+                        method: bundle.receiver.is_some(),
+                    },
+                )
+                .map_err(context)?;
+            }
+            if let Some(operation) = &contract.operation {
+                validate_operation_site(f, &selected.unwrap().expr, operation).map_err(context)?;
+            }
+            let call_site = selected
+                .filter(|_| injection.kind.selects_call())
+                .map(|s| s.index);
+            let constant_site = selected
+                .filter(|_| injection.kind == Kind::ModifyConstant)
+                .map(|s| s.index);
+            let site_fingerprint = variable_selected
+                .map(|s| s.fingerprint.clone())
+                .or_else(|| selected.map(|s| s.fingerprint.clone()));
             injections.push(PlannedInjection {
                 mod_id: bundle.manifest.info.id.clone(),
                 mod_version: bundle.manifest.info.version.clone(),
@@ -210,6 +585,10 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 node: f.node.clone(),
                 function_fingerprint,
                 kind: injection.kind,
+                cancellable: injection.cancellable,
+                argument: injection.argument,
+                constant_site,
+                contract,
                 call_site,
                 site_fingerprint,
                 selector: injection.selector.clone(),
@@ -217,7 +596,42 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 require: injection.require,
                 helper_source: helper.clone(),
                 bindings: injection.bindings.clone(),
+                captures,
+                expression_site,
+                variable_site: variable_selected.map(|s| s.expression),
+                variable: variable_selected.map(|s| VariableIdentity {
+                    local: scopes.locals[s.local].clone(),
+                    at: injection.variable.as_ref().unwrap().at,
+                }),
+                slice,
             });
+        }
+    }
+    planned_modules.sort_by(|a, b| {
+        a.file
+            .cmp(&b.file)
+            .then(a.name.cmp(&b.name))
+            .then(a.mod_id.cmp(&b.mod_id))
+    });
+    planned_bridges.sort_by(|a, b| {
+        a.file
+            .cmp(&b.file)
+            .then(a.node.cmp(&b.node))
+            .then(a.mod_id.cmp(&b.mod_id))
+            .then(a.bridge_id.cmp(&b.bridge_id))
+    });
+    for p in &injections {
+        if p.kind == Kind::Return
+            && !p.captures.is_empty()
+            && injections
+                .iter()
+                .any(|h| h.file == p.file && h.node == p.node && h.cancellable)
+        {
+            return Err(Diagnostic::new(
+                "E_LOCAL_NOT_VISIBLE",
+                "cancellation occurs before RETURN locals are declared",
+            )
+            .file(&p.file));
         }
     }
     injections.sort_by(|a, b| {
@@ -225,6 +639,7 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
             .cmp(&b.file)
             .then(a.node.cmp(&b.node))
             .then(a.call_site.cmp(&b.call_site))
+            .then(a.constant_site.cmp(&b.constant_site))
             .then(b.priority.cmp(&a.priority))
             .then(a.mod_id.cmp(&b.mod_id))
             .then(a.injection_id.cmp(&b.injection_id))
@@ -256,6 +671,9 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
             });
         }
     }
+    for entries in groups.values() {
+        validate_composition(entries)?;
+    }
     // Ensure metadata did not change inputs and catch concurrent source edits.
     let after: BTreeMap<_, _> = source::files(&root)?
         .into_iter()
@@ -268,15 +686,24 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
         ));
     }
     Ok(Plan {
-        schema: 1,
+        schema: 4,
         transformer: env!("CARGO_PKG_VERSION").into(),
         rustc: rustc(&root)?,
         inputs,
         injections,
+        bridges: planned_bridges,
+        modules: planned_modules,
     })
 }
-fn validate_target(f: &Function) -> Result<()> {
+fn validate_target(f: &Function, kind: Kind) -> Result<()> {
     let s = &f.signature;
+    if s.ident.to_string().starts_with("__horizon_mixins_") {
+        return Err(Diagnostic::new(
+            "E_RESERVED_NAME",
+            "generated bridge names cannot be injection targets",
+        )
+        .file(&f.file));
+    }
     if s.asyncness.is_some()
         || s.constness.is_some()
         || s.unsafety.is_some()
@@ -292,7 +719,10 @@ fn validate_target(f: &Function) -> Result<()> {
         )
         .file(&f.file));
     }
-    let mut safety = Safety { error: None };
+    let mut safety = Safety {
+        error: None,
+        boundary: kind == Kind::Head,
+    };
     safety.visit_signature(s);
     safety.visit_block(&f.block);
     if let Some((code, why)) = safety.error {
@@ -300,39 +730,26 @@ fn validate_target(f: &Function) -> Result<()> {
     }
     Ok(())
 }
-fn reject_shadowed_parameters(f: &Function) -> Result<()> {
-    struct Shadow {
-        names: std::collections::BTreeSet<String>,
-        found: Option<String>,
-    }
-    impl<'ast> Visit<'ast> for Shadow {
-        fn visit_pat_ident(&mut self, pat: &'ast syn::PatIdent) {
-            if self.names.contains(&pat.ident.to_string()) {
-                self.found = Some(pat.ident.to_string());
-            }
-            visit::visit_pat_ident(self, pat);
-        }
-    }
-    let mut shadow = Shadow {
-        names: index::parameters(&f.signature)?,
-        found: None,
-    };
-    shadow.visit_block(&f.block);
-    if let Some(name) = shadow.found {
-        return Err(Diagnostic::new(
-            "E_INVALID_BINDING",
-            format!("BEFORE_CALL cannot bind parameters in a body that shadows '{name}'"),
-        )
-        .file(&f.file));
-    }
-    Ok(())
-}
 
 struct Safety {
     error: Option<(&'static str, &'static str)>,
+    boundary: bool,
 }
 impl<'ast> Visit<'ast> for Safety {
+    fn visit_pat_ident(&mut self, pat: &'ast syn::PatIdent) {
+        if pat.ident.to_string().starts_with("__horizon_mixins_") {
+            self.error = Some((
+                "E_RESERVED_NAME",
+                "binding names beginning __horizon_mixins_ are reserved for generated code",
+            ));
+        }
+        visit::visit_pat_ident(self, pat);
+    }
     fn visit_expr(&mut self, expr: &'ast Expr) {
+        if self.boundary {
+            visit::visit_expr(self, expr);
+            return;
+        }
         match expr {
             Expr::Macro(_) => {
                 self.error = Some((
@@ -367,7 +784,11 @@ impl<'ast> Visit<'ast> for Safety {
     fn visit_macro(&mut self, _: &'ast syn::Macro) {
         self.error = Some(("E_UNSUPPORTED_MACRO", "target contains an opaque macro"));
     }
-    fn visit_item(&mut self, _: &'ast Item) {
+    fn visit_item(&mut self, item: &'ast Item) {
+        if self.boundary {
+            visit::visit_item(self, item);
+            return;
+        }
         self.error = Some((
             "E_UNSUPPORTED_CONTROL_FLOW",
             "nested items in target functions are unsupported",
@@ -402,185 +823,228 @@ fn contains_call(expr: &Expr) -> bool {
     f.visit_expr(expr);
     f.0
 }
-pub fn is_call(expr: &Expr) -> bool {
-    matches!(expr, Expr::Call(_) | Expr::MethodCall(_))
-}
-pub fn call_key(expr: &Expr) -> Option<String> {
+pub use crate::helpers::{parse_helper, validate_helper};
+pub use crate::sites::{call_key, is_call};
+
+fn validate_operation_site(
+    f: &Function,
+    expr: &Expr,
+    operation: &helpers::Operation,
+) -> Result<()> {
     match expr {
-        Expr::Call(c) => Some(tokens(&c.func).replace(' ', "")),
-        Expr::MethodCall(c) => Some(format!(
-            "{}.{}{}",
-            tokens(&c.receiver).replace(' ', ""),
-            c.method,
-            tokens(&c.turbofish).replace(' ', "")
-        )),
-        _ => None,
-    }
-}
-fn validate_selector(selector: &str) -> Result<()> {
-    let parsed = syn::parse_str::<Expr>(&format!("{selector}()"));
-    if parsed.as_ref().ok().and_then(call_key).as_deref() != Some(selector) {
-        return Err(Diagnostic::new(
-            "E_SELECTOR",
-            "selector must be an exact callable path or receiver.method without spaces or parentheses",
-        ));
-    }
-    Ok(())
-}
-struct Calls<'a> {
-    all: usize,
-    selector: &'a str,
-    found: Vec<(usize, String, bool)>,
-    next_is_root: bool,
-}
-impl<'ast> Visit<'ast> for Calls<'_> {
-    fn visit_stmt(&mut self, stmt: &'ast syn::Stmt) {
-        match stmt {
-            syn::Stmt::Expr(expr, _) => {
-                self.next_is_root = true;
-                self.visit_expr(expr);
-            }
-            syn::Stmt::Local(local) => {
-                if let Some(init) = &local.init {
-                    self.next_is_root = matches!(&local.pat, syn::Pat::Ident(p) if p.by_ref.is_none() && p.subpat.is_none());
-                    self.visit_expr(&init.expr);
-                    if let Some((_, expr)) = &init.diverge {
-                        self.visit_expr(expr);
+        Expr::Call(call) => {
+            let Expr::Path(path) = &*call.func else {
+                return Err(Diagnostic::new(
+                    "E_UNSUPPORTED_SITE",
+                    "wrapping requires a module-level callable path",
+                ));
+            };
+            if path.path.segments.len() == 1 {
+                let name = path.path.segments[0].ident.to_string();
+                struct Locals(std::collections::BTreeSet<String>);
+                impl<'ast> Visit<'ast> for Locals {
+                    fn visit_pat_ident(&mut self, pat: &'ast syn::PatIdent) {
+                        self.0.insert(pat.ident.to_string());
+                        visit::visit_pat_ident(self, pat);
                     }
                 }
-            }
-            _ => visit::visit_stmt(self, stmt),
-        }
-    }
-    fn visit_expr(&mut self, expr: &'ast Expr) {
-        let eligible = std::mem::take(&mut self.next_is_root);
-        if let Some(key) = call_key(expr) {
-            let site = self.all;
-            self.all += 1;
-            if key == self.selector {
-                self.found
-                    .push((site, source::fingerprint(tokens(expr)), eligible));
+                let mut names = Locals(index::parameters(&f.signature)?);
+                names.visit_block(&f.block);
+                if names.0.contains(&name) {
+                    return Err(Diagnostic::new(
+                        "E_UNSUPPORTED_SITE",
+                        "wrapping a local callable value is unsupported; select a module-level function",
+                    ));
+                }
             }
         }
-        if matches!(expr, Expr::Paren(_)) {
-            self.next_is_root = eligible;
+        Expr::MethodCall(call) => {
+            let Expr::Path(receiver) = &*call.receiver else {
+                return Err(Diagnostic::new(
+                    "E_UNSUPPORTED_SITE",
+                    "wrapped method receiver must be a target reference parameter",
+                ));
+            };
+            if receiver.path.segments.len() != 1 {
+                return Err(Diagnostic::new(
+                    "E_UNSUPPORTED_SITE",
+                    "method receiver must be a single parameter name",
+                ));
+            }
+            let name = receiver.path.segments[0].ident.to_string();
+            let ty = f.signature.inputs.iter().find_map(|input| match input {
+                syn::FnArg::Typed(arg) if matches!(&*arg.pat, syn::Pat::Ident(p) if p.ident == name) => Some(*arg.ty.clone()),
+                syn::FnArg::Receiver(r) if name == "self" && r.reference.is_some() => f.self_type.as_ref().map(|ty| {
+                    if r.mutability.is_some() { syn::parse_quote!(&mut #ty) } else { syn::parse_quote!(&#ty) }
+                }),
+                _ => None,
+            });
+            let declared: syn::Type = syn::parse_str(&operation.inputs[0])
+                .map_err(|e| Diagnostic::new("E_OPERATION_SIGNATURE", e.to_string()))?;
+            let Some(syn::Type::Reference(reference)) = ty else {
+                return Err(Diagnostic::new(
+                    "E_UNSUPPORTED_SITE",
+                    "wrapped method receiver must be a target parameter with an explicit reference type",
+                ));
+            };
+            if helpers::normalize_type(&syn::Type::Reference(reference.clone()))
+                != helpers::normalize_type(&declared)
+            {
+                return Err(Diagnostic::new(
+                    "E_OPERATION_SIGNATURE",
+                    "receiver binding must match the original parameter reference type",
+                ));
+            }
+            if reference.mutability.is_some() {
+                struct Mentions<'a> {
+                    name: &'a str,
+                    found: bool,
+                }
+                impl<'ast> Visit<'ast> for Mentions<'_> {
+                    fn visit_expr_path(&mut self, p: &'ast syn::ExprPath) {
+                        self.found |= p
+                            .path
+                            .segments
+                            .first()
+                            .is_some_and(|s| s.ident == self.name);
+                        visit::visit_expr_path(self, p);
+                    }
+                }
+                let mut mentions = Mentions {
+                    name: &name,
+                    found: false,
+                };
+                for arg in &call.args {
+                    mentions.visit_expr(arg);
+                }
+                if mentions.found {
+                    return Err(Diagnostic::new(
+                        "E_UNSUPPORTED_SITE",
+                        "receiver also occurs in call arguments; two-phase receiver borrowing is unsupported for wrappers",
+                    ));
+                }
+            }
         }
-        visit::visit_expr(self, expr);
-    }
-}
-pub fn parse_helper(source: &str) -> Result<syn::ItemFn> {
-    let file =
-        syn::parse_file(source).map_err(|e| Diagnostic::new("E_INVALID_HELPER", e.to_string()))?;
-    if !file.attrs.is_empty() || file.items.len() != 1 {
-        return Err(Diagnostic::new(
-            "E_INVALID_HELPER",
-            "helper file must contain exactly one private function",
-        ));
-    }
-    let Some(Item::Fn(helper)) = file.items.into_iter().next() else {
-        return Err(Diagnostic::new(
-            "E_INVALID_HELPER",
-            "helper must be a function",
-        ));
-    };
-    let sig = &helper.sig;
-    if !helper.attrs.is_empty()
-        || !matches!(helper.vis, syn::Visibility::Inherited)
-        || sig.asyncness.is_some()
-        || sig.constness.is_some()
-        || sig.unsafety.is_some()
-        || sig.abi.is_some()
-        || sig.variadic.is_some()
-        || !sig.generics.params.is_empty()
-        || sig.generics.where_clause.is_some()
-    {
-        return Err(Diagnostic::new(
-            "E_INVALID_HELPER",
-            "helper must be private, synchronous, safe, non-generic and have no attributes",
-        ));
-    }
-    Ok(helper)
-}
-pub fn validate_helper(f: &Function, kind: Kind, source: &str, bindings: &[Binding]) -> Result<()> {
-    let helper = parse_helper(source)?;
-    let parameters = index::parameters(&f.signature)?;
-    if parameters.contains(&helper.sig.ident.to_string()) {
-        return Err(Diagnostic::new(
-            "E_INVALID_HELPER",
-            "helper name shadows a target parameter; rename it",
-        ));
-    }
-    if helper.sig.inputs.len() != bindings.len() {
-        return Err(Diagnostic::new(
-            "E_INVALID_BINDING",
-            "one explicit binding is required per helper parameter",
-        ));
-    }
-    if kind != Kind::Overwrite
-        && !matches!(&helper.sig.output, ReturnType::Default)
-        && !matches!(&helper.sig.output, ReturnType::Type(_, ty) if matches!(&**ty, syn::Type::Tuple(t) if t.elems.is_empty()))
-    {
-        return Err(Diagnostic::new(
-            "E_INVALID_HELPER",
-            "insertion helpers must return ()",
-        ));
-    }
-    let mut names = std::collections::BTreeSet::new();
-    for (arg, binding) in helper.sig.inputs.iter().zip(bindings) {
-        let FnArg::Typed(arg) = arg else {
+        _ => {
             return Err(Diagnostic::new(
-                "E_INVALID_HELPER",
-                "helpers cannot have self receivers",
-            ));
-        };
-        let syn::Pat::Ident(pattern) = &*arg.pat else {
-            return Err(Diagnostic::new(
-                "E_INVALID_BINDING",
-                "helper parameters must be named identifiers",
-            ));
-        };
-        let ty: syn::Type = syn::parse_str(&binding.ty)
-            .map_err(|e| Diagnostic::new("E_INVALID_BINDING", e.to_string()))?;
-        let value: Expr = syn::parse_str(&binding.value)
-            .map_err(|e| Diagnostic::new("E_INVALID_BINDING", e.to_string()))?;
-        if pattern.ident != binding.name
-            || !names.insert(&binding.name)
-            || tokens(&ty) != tokens(&arg.ty)
-        {
-            return Err(Diagnostic::new(
-                "E_INVALID_BINDING",
-                format!(
-                    "binding '{}' must match helper parameter name and type in declaration order",
-                    binding.name
-                ),
-            ));
-        }
-        if !binding_expr(&value, &parameters) {
-            return Err(Diagnostic::new(
-                "E_INVALID_BINDING",
-                format!(
-                    "binding '{}' must be a target parameter or its explicit borrow/reborrow; no calls or locals",
-                    binding.value
-                ),
-            ));
-        }
-        if tokens(&ty).split_whitespace().any(|s| s == "Self") {
-            return Err(Diagnostic::new(
-                "E_INVALID_BINDING",
-                "use an explicit concrete type instead of Self in local helper signatures",
+                "E_PLAN_SITE",
+                "operation site is not a call",
             ));
         }
     }
     Ok(())
 }
-fn binding_expr(expr: &Expr, parameters: &std::collections::BTreeSet<String>) -> bool {
-    match expr {
-        Expr::Path(p) if p.qself.is_none() && p.path.segments.len() == 1 => {
-            parameters.contains(&p.path.segments[0].ident.to_string())
-        }
-        Expr::Reference(r) => binding_expr(&r.expr, parameters),
-        Expr::Unary(u) if matches!(u.op, syn::UnOp::Deref(_)) => binding_expr(&u.expr, parameters),
-        Expr::Paren(p) => binding_expr(&p.expr, parameters),
-        _ => false,
+fn composition_error(
+    p: &PlannedInjection,
+    previous: &PlannedInjection,
+    code: &str,
+    message: &str,
+) -> Diagnostic {
+    Diagnostic {
+        mod_id: Some(p.mod_id.clone().into()),
+        injection_id: Some(p.injection_id.clone().into()),
+        target: Some(p.target.clone().into()),
+        selector: p.selector.as_deref().map(Into::into),
+        ..Diagnostic::new(
+            code,
+            format!(
+                "{message}: {}/{} and {}/{} on {}",
+                previous.mod_id, previous.injection_id, p.mod_id, p.injection_id, p.target
+            ),
+        )
+        .file(&p.file)
     }
+}
+fn validate_composition(entries: &[&PlannedInjection]) -> Result<()> {
+    let mut operations: BTreeMap<usize, &PlannedInjection> = BTreeMap::new();
+    for p in entries {
+        if let Some(op) = &p.contract.operation
+            && let Some(previous) = operations.insert(p.call_site.unwrap(), p)
+            && previous.contract.operation.as_ref() != Some(op)
+        {
+            return Err(composition_error(
+                p,
+                previous,
+                "E_OPERATION_SIGNATURE",
+                "wrappers at one original site must have identical input/output signatures",
+            ));
+        }
+    }
+    let mut bundles: BTreeMap<usize, &PlannedInjection> = BTreeMap::new();
+    for p in entries {
+        if let Some(bundle) = &p.contract.bundle {
+            if let Some(previous) = bundles.insert(p.call_site.unwrap(), p)
+                && previous.contract.bundle.as_ref() != Some(bundle)
+            {
+                return Err(composition_error(
+                    p,
+                    previous,
+                    "E_ARGUMENT_SIGNATURE",
+                    "tuple modifiers must use identical argument/result signatures",
+                ));
+            }
+            if let Some(wrapper) = operations.get(&p.call_site.unwrap()) {
+                let op = wrapper.contract.operation.as_ref().unwrap();
+                let expected = &op.inputs[usize::from(op.method)..];
+                if expected != bundle.inputs
+                    || op.output != bundle.output
+                    || op.method != bundle.receiver.is_some()
+                {
+                    return Err(composition_error(
+                        p,
+                        wrapper,
+                        "E_ARGUMENT_SIGNATURE",
+                        "tuple modifier and wrapper signatures disagree",
+                    ));
+                }
+            }
+        }
+    }
+    type ValueSite = (Option<usize>, Option<usize>, Option<usize>, Option<usize>);
+    let mut values: BTreeMap<ValueSite, &PlannedInjection> = BTreeMap::new();
+    for p in entries {
+        if matches!(
+            p.kind,
+            Kind::ModifyArg | Kind::ModifyConstant | Kind::ModifyVariable
+        ) {
+            let ty = p.contract.value.as_deref().unwrap();
+            let key = (p.call_site, p.constant_site, p.variable_site, p.argument);
+            if let Some(previous) = values.insert(key, p)
+                && previous.contract.value.as_deref() != Some(ty)
+            {
+                return Err(composition_error(
+                    p,
+                    previous,
+                    "E_VALUE_SIGNATURE",
+                    "modifiers on one original value must use identical input/output types",
+                ));
+            }
+            if p.kind == Kind::ModifyArg
+                && let Some(bundle) = bundles.get(&p.call_site.unwrap())
+                && bundle.contract.bundle.as_ref().unwrap().inputs[p.argument.unwrap()] != ty
+            {
+                return Err(composition_error(
+                    p,
+                    bundle,
+                    "E_ARGUMENT_SIGNATURE",
+                    "argument modifier disagrees with tuple element type",
+                ));
+            }
+            if p.kind == Kind::ModifyArg
+                && let Some(wrapper) = operations.get(&p.call_site.unwrap())
+            {
+                let op = wrapper.contract.operation.as_ref().unwrap();
+                let expected = &op.inputs[p.argument.unwrap() + usize::from(op.method)];
+                if expected != ty {
+                    return Err(composition_error(
+                        p,
+                        wrapper,
+                        "E_OPERATION_SIGNATURE",
+                        "argument modifier type disagrees with the wrapper operation signature",
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
 }

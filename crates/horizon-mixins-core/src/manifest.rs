@@ -9,7 +9,20 @@ pub struct Manifest {
     pub info: Mod,
     #[serde(default)]
     pub compatibility: Compatibility,
+    #[serde(default)]
     pub injection: Vec<Injection>,
+    #[serde(default)]
+    pub bridge: Vec<Bridge>,
+    #[serde(default)]
+    pub module: Vec<Module>,
+}
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Module {
+    pub id: String,
+    pub file: String,
+    pub name: String,
+    pub source: String,
 }
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -30,6 +43,23 @@ pub enum Kind {
     Head,
     BeforeCall,
     Overwrite,
+    Return,
+    ModifyArg,
+    ModifyConstant,
+    WrapOperation,
+    ModifyArgs,
+    ModifyVariable,
+}
+impl Kind {
+    pub fn selects_call(self) -> bool {
+        matches!(
+            self,
+            Self::BeforeCall | Self::ModifyArg | Self::ModifyArgs | Self::WrapOperation
+        )
+    }
+    pub fn selects_site(self) -> bool {
+        self.selects_call() || matches!(self, Self::ModifyConstant | Self::ModifyVariable)
+    }
 }
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -39,13 +69,64 @@ pub struct Injection {
     pub kind: Kind,
     pub helper: String,
     #[serde(default)]
+    pub cancellable: bool,
+    pub argument: Option<usize>,
+    #[serde(default)]
     pub bindings: Vec<Binding>,
     pub priority: Option<i32>,
     pub selector: Option<String>,
     pub ordinal: Option<usize>,
     pub require: Option<usize>,
     pub fingerprint: Option<String>,
+    pub slice: Option<Slice>,
+    pub variable: Option<Variable>,
+    pub result: Option<String>,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Anchor {
+    pub selector: String,
+    pub ordinal: usize,
+    pub require: usize,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Slice {
+    pub from: Option<Anchor>,
+    pub to: Option<Anchor>,
+}
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Access {
+    Store,
+    Load,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Variable {
+    pub name: String,
+    pub ordinal: usize,
+    pub at: Access,
+    #[serde(default)]
+    pub parameter: bool,
+}
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BridgeKind {
+    Get,
+    GetMut,
+    Set,
+    Invoke,
+}
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Bridge {
+    pub id: String,
+    pub kind: BridgeKind,
+    pub target: String,
+    pub member: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Binding {
@@ -58,6 +139,7 @@ pub struct LoadedMod {
     pub manifest: Manifest,
     pub file: String,
     pub helpers: Vec<String>,
+    pub modules: Vec<String>,
 }
 fn valid_id(value: &str) -> bool {
     !value.is_empty()
@@ -103,11 +185,14 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
         let fail = |code: &str, message: String| Diagnostic::new(code, message).file(&path);
         if !valid_id(&manifest.info.id)
             || manifest.info.version.is_empty()
-            || manifest.injection.is_empty()
+            || (manifest.injection.is_empty()
+                && manifest.bridge.is_empty()
+                && manifest.module.is_empty())
         {
             return Err(fail(
                 "E_MANIFEST",
-                "mod needs an ASCII id, a version and at least one injection".into(),
+                "mod needs an ASCII id, a version and at least one injection, bridge or module"
+                    .into(),
             ));
         }
         if !ids.insert(manifest.info.id.clone()) {
@@ -118,6 +203,31 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
         }
         let mut injections = BTreeSet::new();
         let mut helpers = Vec::new();
+        let mut modules = Vec::new();
+        for module in &manifest.module {
+            if !valid_id(&module.id) || !injections.insert(&module.id) {
+                return Err(fail(
+                    "E_DUPLICATE_ID",
+                    format!("invalid or duplicate module id '{}'", module.id),
+                ));
+            }
+            source::relative(Path::new(&module.file))?;
+            syn::parse_str::<syn::Ident>(&module.name)
+                .map_err(|e| fail("E_MODULE", e.to_string()))?;
+            let payload = source::contained(path.parent().unwrap(), Path::new(&module.source))?;
+            modules.push(fs::read_to_string(&payload).map_err(io)?);
+        }
+        for bridge in &manifest.bridge {
+            if !valid_id(&bridge.id) || !injections.insert(&bridge.id) {
+                return Err(fail(
+                    "E_DUPLICATE_ID",
+                    format!("invalid or duplicate bridge id '{}'", bridge.id),
+                ));
+            }
+            if (bridge.kind == BridgeKind::Invoke) == bridge.member.is_some() {
+                return Err(fail("E_BRIDGE_TARGET", "GET/GET_MUT/SET require member; INVOKE uses an exact method target without member".into()));
+            }
+        }
         for injection in &manifest.injection {
             let context = |e: Diagnostic| e.injection(&manifest.info.id, injection).file(&path);
             if !valid_id(&injection.id) || !injections.insert(&injection.id) {
@@ -126,15 +236,41 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
                     format!("invalid or duplicate injection id '{}'", injection.id),
                 )));
             }
-            if injection.kind == Kind::BeforeCall {
-                if injection.selector.is_none()
+            if injection.cancellable && injection.kind != Kind::Head {
+                return Err(context(fail(
+                    "E_MANIFEST",
+                    "cancellable is supported only for HEAD".into(),
+                )));
+            }
+            if (injection.kind == Kind::ModifyArg) != injection.argument.is_some() {
+                return Err(context(fail(
+                    "E_ARGUMENT",
+                    "argument is required only for MODIFY_ARG".into(),
+                )));
+            }
+            if (injection.kind == Kind::ModifyVariable) != injection.variable.is_some() {
+                return Err(context(fail(
+                    "E_VARIABLE",
+                    "variable is required only for MODIFY_VARIABLE".into(),
+                )));
+            }
+            if (injection.kind == Kind::ModifyArgs) != injection.result.is_some() {
+                return Err(context(fail(
+                    "E_ARGUMENT_SIGNATURE",
+                    "result is required only for MODIFY_ARGS".into(),
+                )));
+            }
+            if injection.kind.selects_site() {
+                if (injection.kind != Kind::ModifyVariable && injection.selector.is_none())
                     || injection.ordinal.is_none()
                     || injection.require.is_none_or(|n| n == 0)
                 {
+                    return Err(context(fail("E_SELECTOR", "site injections require a selector (or variable), zero-based ordinal and positive require".into())));
+                }
+                if injection.kind == Kind::ModifyVariable && injection.selector.is_some() {
                     return Err(context(fail(
                         "E_SELECTOR",
-                        "BEFORE_CALL requires selector, zero-based ordinal, and positive require"
-                            .into(),
+                        "MODIFY_VARIABLE uses variable rather than selector".into(),
                     )));
                 }
             } else if injection.selector.is_some()
@@ -143,7 +279,13 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
             {
                 return Err(context(fail(
                     "E_SELECTOR",
-                    "selector/ordinal/require apply only to BEFORE_CALL".into(),
+                    "selector/ordinal/require apply only to site injections".into(),
+                )));
+            }
+            if injection.slice.is_some() && !injection.kind.selects_site() {
+                return Err(context(fail(
+                    "E_SLICE",
+                    "slices apply only to site injections".into(),
                 )));
             }
             let helper_path =
@@ -155,6 +297,7 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
         mods.push(LoadedMod {
             manifest,
             helpers,
+            modules,
             file: path.display().to_string(),
         });
     }

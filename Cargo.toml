@@ -1,10 +1,10 @@
 [workspace]
 members = ["crates/horizon-mixins-core", "crates/horizon-mixins-transform", "crates/horizon-mixins-cli"]
-exclude = ["fixtures/feasibility", "fixtures/privacy-failure", "fixtures/cycle", "fixtures/game"]
+exclude = ["fixtures/feasibility", "fixtures/privacy-failure", "fixtures/cycle", "fixtures/game", "fixtures/advanced", "fixtures/scoped"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.4.0"
 edition = "2024"
 rust-version = "1.95"
 license = "MIT"

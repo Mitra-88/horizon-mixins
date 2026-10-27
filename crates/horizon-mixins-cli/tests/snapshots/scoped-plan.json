@@ -1,0 +1,1469 @@
+{
+  "bridges": [
+    {
+      "bridge_id": "get-health",
+      "file": "game/src/state.rs",
+      "fingerprint": "d3bdf6a4cabc6ef07eac0ae7e113ecf367882b6c60f95733fcc39c4d8e81cbe7",
+      "generated": "impl Entity { pub fn __horizon_mixins_alpha_get_health (& self) -> & i32 { & self . health } }",
+      "kind": "GET",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_alpha_get_health",
+      "node": [
+        1
+      ],
+      "owner": "scoped_game::state::Entity",
+      "target": "scoped_game::state::Entity"
+    },
+    {
+      "bridge_id": "get-health-mut",
+      "file": "game/src/state.rs",
+      "fingerprint": "d3bdf6a4cabc6ef07eac0ae7e113ecf367882b6c60f95733fcc39c4d8e81cbe7",
+      "generated": "impl Entity { pub fn __horizon_mixins_alpha_get_health_mut (& mut self) -> & mut i32 { & mut self . health } }",
+      "kind": "GET_MUT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_alpha_get_health_mut",
+      "node": [
+        1
+      ],
+      "owner": "scoped_game::state::Entity",
+      "target": "scoped_game::state::Entity"
+    },
+    {
+      "bridge_id": "get-name",
+      "file": "game/src/state.rs",
+      "fingerprint": "d3bdf6a4cabc6ef07eac0ae7e113ecf367882b6c60f95733fcc39c4d8e81cbe7",
+      "generated": "impl Entity { pub fn __horizon_mixins_alpha_get_name (& self) -> & String { & self . name } }",
+      "kind": "GET",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_alpha_get_name",
+      "node": [
+        1
+      ],
+      "owner": "scoped_game::state::Entity",
+      "target": "scoped_game::state::Entity"
+    },
+    {
+      "bridge_id": "set-health",
+      "file": "game/src/state.rs",
+      "fingerprint": "d3bdf6a4cabc6ef07eac0ae7e113ecf367882b6c60f95733fcc39c4d8e81cbe7",
+      "generated": "impl Entity { pub fn __horizon_mixins_alpha_set_health (& mut self , value : i32) { self . health = value ; } }",
+      "kind": "SET",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_alpha_set_health",
+      "node": [
+        1
+      ],
+      "owner": "scoped_game::state::Entity",
+      "target": "scoped_game::state::Entity"
+    },
+    {
+      "bridge_id": "health",
+      "file": "game/src/state.rs",
+      "fingerprint": "d3bdf6a4cabc6ef07eac0ae7e113ecf367882b6c60f95733fcc39c4d8e81cbe7",
+      "generated": "impl Entity { pub fn __horizon_mixins_beta_health (& self) -> & i32 { & self . health } }",
+      "kind": "GET",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_beta_health",
+      "node": [
+        1
+      ],
+      "owner": "scoped_game::state::Entity",
+      "target": "scoped_game::state::Entity"
+    },
+    {
+      "bridge_id": "read-trait",
+      "file": "game/src/state.rs",
+      "fingerprint": "fc54a1009d319a36b6764a3a83102217480915643a1928cee7c424f55f5632b0",
+      "generated": "impl Entity { pub fn __horizon_mixins_beta_read_trait (& self) -> i32 { < Entity as Value > :: value (self) } }",
+      "kind": "INVOKE",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_beta_read_trait",
+      "node": [
+        3
+      ],
+      "owner": "scoped_game::state::Entity",
+      "target": "scoped_game::state::<Entity as Value>::value"
+    },
+    {
+      "bridge_id": "create",
+      "file": "game/src/state.rs",
+      "fingerprint": "dd9f0494f1cc39452a2d2bf55a1009cff264338cb02146ed9ad6c61a827c8a1c",
+      "generated": "impl Entity { pub fn __horizon_mixins_alpha_create (health : i32) -> Self { < Entity > :: create (health) } }",
+      "kind": "INVOKE",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_alpha_create",
+      "node": [
+        4
+      ],
+      "owner": "scoped_game::state::Entity",
+      "target": "scoped_game::state::Entity::create"
+    },
+    {
+      "bridge_id": "inc",
+      "file": "game/src/state.rs",
+      "fingerprint": "dd9f0494f1cc39452a2d2bf55a1009cff264338cb02146ed9ad6c61a827c8a1c",
+      "generated": "impl Entity { pub fn __horizon_mixins_alpha_inc (& mut self , amount : i32) -> & i32 { < Entity > :: inc (self , amount) } }",
+      "kind": "INVOKE",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_alpha_inc",
+      "node": [
+        4
+      ],
+      "owner": "scoped_game::state::Entity",
+      "target": "scoped_game::state::Entity::inc"
+    },
+    {
+      "bridge_id": "tuple-field",
+      "file": "game/src/state.rs",
+      "fingerprint": "40e1580d4c59d844189bbd388f8326104b30b8fc3289a85430960a1706bb13e1",
+      "generated": "impl Pair { pub fn __horizon_mixins_beta_tuple_field (& self) -> & i32 { & self . 0 } }",
+      "kind": "GET",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "name": "__horizon_mixins_beta_tuple_field",
+      "node": [
+        5
+      ],
+      "owner": "scoped_game::state::Pair",
+      "target": "scoped_game::state::Pair"
+    }
+  ],
+  "injections": [
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "&mut i32",
+          "value": "$local_mut:value:0"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "value",
+          "expression": "&mut value",
+          "local": {
+            "fingerprint": "2987c9cd762b193dec496c0b743fea6d9c0003dd7a30bf2733300c568e1420ba",
+            "id": 2,
+            "mutable": true,
+            "name": "value",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": "i32"
+          },
+          "ty": "&mut i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 1,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "17076c154dee9f258fcd5be55283b5360269d70cbb7467d85d645a46ff90a767",
+      "helper_source": "fn capture(value:&mut i32,log:&mut Vec<&'static str>){*value+=2;log.push(\"alpha\");}\n",
+      "injection_id": "capture",
+      "kind": "BEFORE_CALL",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        5
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 3,
+      "selector": "tick",
+      "site_fingerprint": "c422e6926d97e7a87afbf58f1779d1fa79f2a51f954ac4b03fb62c41feee5ff8",
+      "target": "scoped_game::locals"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "&mut i32",
+          "value": "$local_mut:value:0"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "value",
+          "expression": "&mut value",
+          "local": {
+            "fingerprint": "2987c9cd762b193dec496c0b743fea6d9c0003dd7a30bf2733300c568e1420ba",
+            "id": 2,
+            "mutable": true,
+            "name": "value",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": "i32"
+          },
+          "ty": "&mut i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 1,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "17076c154dee9f258fcd5be55283b5360269d70cbb7467d85d645a46ff90a767",
+      "helper_source": "fn capture(value:&mut i32,log:&mut Vec<&'static str>){*value+=3;log.push(\"beta\");}\n",
+      "injection_id": "capture",
+      "kind": "BEFORE_CALL",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        5
+      ],
+      "ordinal": 0,
+      "priority": 50,
+      "require": 3,
+      "selector": "tick",
+      "site_fingerprint": "c422e6926d97e7a87afbf58f1779d1fa79f2a51f954ac4b03fb62c41feee5ff8",
+      "target": "scoped_game::locals"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "&i32",
+          "value": "$local_ref:value:1"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 1,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "value",
+          "expression": "&value",
+          "local": {
+            "fingerprint": "513ea439f2da978d67ca0b739ace3b7c6087aad1692a4df94efdb39d5b8aede4",
+            "id": 3,
+            "mutable": false,
+            "name": "value",
+            "ordinal": 1,
+            "parameter": false,
+            "supported": true,
+            "ty": "i32"
+          },
+          "ty": "&i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 6,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "17076c154dee9f258fcd5be55283b5360269d70cbb7467d85d645a46ff90a767",
+      "helper_source": "fn value(value:&i32,log:&mut Vec<&'static str>){assert_eq!(*value,100);log.push(\"inner\");}\n",
+      "injection_id": "inner",
+      "kind": "BEFORE_CALL",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        5
+      ],
+      "ordinal": 1,
+      "priority": 50,
+      "require": 3,
+      "selector": "tick",
+      "site_fingerprint": "c422e6926d97e7a87afbf58f1779d1fa79f2a51f954ac4b03fb62c41feee5ff8",
+      "target": "scoped_game::locals"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "&mut i32",
+          "value": "$local_mut:value:0"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 2,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "value",
+          "expression": "&mut value",
+          "local": {
+            "fingerprint": "2987c9cd762b193dec496c0b743fea6d9c0003dd7a30bf2733300c568e1420ba",
+            "id": 2,
+            "mutable": true,
+            "name": "value",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": "i32"
+          },
+          "ty": "&mut i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 10,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "17076c154dee9f258fcd5be55283b5360269d70cbb7467d85d645a46ff90a767",
+      "helper_source": "fn capture(value:&mut i32,log:&mut Vec<&'static str>){*value+=4;log.push(\"after\");}\n",
+      "injection_id": "after",
+      "kind": "BEFORE_CALL",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        5
+      ],
+      "ordinal": 2,
+      "priority": 100,
+      "require": 3,
+      "selector": "tick",
+      "site_fingerprint": "c422e6926d97e7a87afbf58f1779d1fa79f2a51f954ac4b03fb62c41feee5ff8",
+      "target": "scoped_game::locals"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "&mut i32",
+          "value": "$local_mut:n:0"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "value",
+          "expression": "&mut n",
+          "local": {
+            "fingerprint": "f7072356290df7df65c8db469630db1de8ae1d15b569ea4519b48bf25992974a",
+            "id": 1,
+            "mutable": true,
+            "name": "n",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": null
+          },
+          "ty": "&mut i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 1,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "9347d688b0d1246cc93058948132ce18e22e18f36f80d2afdf4ac6d881281f0c",
+      "helper_source": "fn capture(value:&mut i32){*value+=2;}\n",
+      "injection_id": "inferred",
+      "kind": "BEFORE_CALL",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        6
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "tick",
+      "site_fingerprint": "c422e6926d97e7a87afbf58f1779d1fa79f2a51f954ac4b03fb62c41feee5ff8",
+      "target": "scoped_game::inferred"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "extra",
+          "ty": "&i32",
+          "value": "$local_ref:extra:0"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "extra",
+          "expression": "&extra",
+          "local": {
+            "fingerprint": "7a6a21fbb92fd23b378b097608c177c47912842247a48527e2ca5e695aa94c2f",
+            "id": 2,
+            "mutable": false,
+            "name": "extra",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": "i32"
+          },
+          "ty": "&i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "5ac6eeec71cca7f40dd740258d4d9bef24d998c5c168c340dc5d9b2d33d1babd",
+      "helper_source": "fn modify(value:i32,extra:&i32,log:&mut Vec<&'static str>)->i32{log.push(\"return\");value+*extra}\n",
+      "injection_id": "return-local",
+      "kind": "RETURN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        7
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "scoped_game::return_local"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "b0dc343dd5ba67f0fcba33a6dd6adc7a1c5f9e7330b4fe7ed818f4880a5fe76f",
+      "helper_source": "fn modify(value:i32,log:&mut Vec<&'static str>)->i32{log.push(\"init-alpha\");value+10}\n",
+      "injection_id": "init",
+      "kind": "MODIFY_VARIABLE",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        8
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 2,
+      "selector": null,
+      "site_fingerprint": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+      "target": "scoped_game::variables",
+      "variable": {
+        "at": "STORE",
+        "local": {
+          "fingerprint": "79c6df0c971112580dc6bda71fff0c970d8ae2450947bef7cc5afd7c7d3d0d47",
+          "id": 1,
+          "mutable": true,
+          "name": "health",
+          "ordinal": 0,
+          "parameter": false,
+          "supported": true,
+          "ty": "i32"
+        }
+      },
+      "variable_site": 0
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 3,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "b0dc343dd5ba67f0fcba33a6dd6adc7a1c5f9e7330b4fe7ed818f4880a5fe76f",
+      "helper_source": "fn modify(value:i32,log:&mut Vec<&'static str>)->i32{log.push(\"store\");value+3}\n",
+      "injection_id": "store",
+      "kind": "MODIFY_VARIABLE",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        8
+      ],
+      "ordinal": 1,
+      "priority": 100,
+      "require": 2,
+      "selector": null,
+      "site_fingerprint": "af1f608e0c5ff169084b5e05dfbe2651d91051c00a442497e376fbda0200823f",
+      "target": "scoped_game::variables",
+      "variable": {
+        "at": "STORE",
+        "local": {
+          "fingerprint": "79c6df0c971112580dc6bda71fff0c970d8ae2450947bef7cc5afd7c7d3d0d47",
+          "id": 1,
+          "mutable": true,
+          "name": "health",
+          "ordinal": 0,
+          "parameter": false,
+          "supported": true,
+          "ty": "i32"
+        }
+      },
+      "variable_site": 3
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "health",
+          "ty": "&i32",
+          "value": "$local_ref:health:0"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "health",
+          "expression": "&health",
+          "local": {
+            "fingerprint": "79c6df0c971112580dc6bda71fff0c970d8ae2450947bef7cc5afd7c7d3d0d47",
+            "id": 1,
+            "mutable": true,
+            "name": "health",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": "i32"
+          },
+          "ty": "&i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "b0dc343dd5ba67f0fcba33a6dd6adc7a1c5f9e7330b4fe7ed818f4880a5fe76f",
+      "helper_source": "fn modify(value:i32,health:&i32,log:&mut Vec<&'static str>)->i32{log.push(\"return\");value+*health}\n",
+      "injection_id": "variable-return",
+      "kind": "RETURN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        8
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "scoped_game::variables"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "b0dc343dd5ba67f0fcba33a6dd6adc7a1c5f9e7330b4fe7ed818f4880a5fe76f",
+      "helper_source": "fn modify(value:i32,log:&mut Vec<&'static str>)->i32{log.push(\"init-beta\");value*2}\n",
+      "injection_id": "init",
+      "kind": "MODIFY_VARIABLE",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        8
+      ],
+      "ordinal": 0,
+      "priority": 50,
+      "require": 2,
+      "selector": null,
+      "site_fingerprint": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+      "target": "scoped_game::variables",
+      "variable": {
+        "at": "STORE",
+        "local": {
+          "fingerprint": "79c6df0c971112580dc6bda71fff0c970d8ae2450947bef7cc5afd7c7d3d0d47",
+          "id": 1,
+          "mutable": true,
+          "name": "health",
+          "ordinal": 0,
+          "parameter": false,
+          "supported": true,
+          "ty": "i32"
+        }
+      },
+      "variable_site": 0
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 6,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "b0dc343dd5ba67f0fcba33a6dd6adc7a1c5f9e7330b4fe7ed818f4880a5fe76f",
+      "helper_source": "fn modify(value:i32,log:&mut Vec<&'static str>)->i32{log.push(\"load\");value*2}\n",
+      "injection_id": "load",
+      "kind": "MODIFY_VARIABLE",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        8
+      ],
+      "ordinal": 1,
+      "priority": 50,
+      "require": 2,
+      "selector": null,
+      "site_fingerprint": "62484e22a6a5ade1ba25cb1b7c55c4b8861de24caddab73c9409742734008b26",
+      "target": "scoped_game::variables",
+      "variable": {
+        "at": "LOAD",
+        "local": {
+          "fingerprint": "79c6df0c971112580dc6bda71fff0c970d8ae2450947bef7cc5afd7c7d3d0d47",
+          "id": 1,
+          "mutable": true,
+          "name": "health",
+          "ordinal": 0,
+          "parameter": false,
+          "supported": true,
+          "ty": "i32"
+        }
+      },
+      "variable_site": 6
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 5,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "a634ab90a115d258b590d3c41fe30a31a563df02a04163ef0f72efb32cc3e8d1",
+      "helper_source": "fn modify(value:i32)->i32{value*2}\n",
+      "injection_id": "parameter-load",
+      "kind": "MODIFY_VARIABLE",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        9
+      ],
+      "ordinal": 1,
+      "priority": 100,
+      "require": 2,
+      "selector": null,
+      "site_fingerprint": "6c35493a2b937829c9815c39e23af964bc84e5430a7dc104c700bbc0de2b59e3",
+      "target": "scoped_game::parameter",
+      "variable": {
+        "at": "LOAD",
+        "local": {
+          "fingerprint": "13b0dcf4fba277080de63589c77e293eac1f6fb82c11986f2571404d78ed87dd",
+          "id": 0,
+          "mutable": true,
+          "name": "count",
+          "ordinal": 0,
+          "parameter": true,
+          "supported": true,
+          "ty": "i32"
+        }
+      },
+      "variable_site": 5
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 2,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "a634ab90a115d258b590d3c41fe30a31a563df02a04163ef0f72efb32cc3e8d1",
+      "helper_source": "fn modify(value:i32)->i32{value+5}\n",
+      "injection_id": "parameter-store",
+      "kind": "MODIFY_VARIABLE",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        9
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": null,
+      "site_fingerprint": "bce879f251fac0a373c021f2995c93ab208a3cb28e00e1420c11f47259a2f5dc",
+      "target": "scoped_game::parameter",
+      "variable": {
+        "at": "STORE",
+        "local": {
+          "fingerprint": "13b0dcf4fba277080de63589c77e293eac1f6fb82c11986f2571404d78ed87dd",
+          "id": 0,
+          "mutable": true,
+          "name": "count",
+          "ordinal": 0,
+          "parameter": true,
+          "supported": true,
+          "ty": "i32"
+        }
+      },
+      "variable_site": 2
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 1,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 8,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "1ab16eb27665d0703ce52b3c221097076a34c2679966f34d180cc5e912c7e563",
+      "helper_source": "fn modify(value:i32)->i32{value+1}\n",
+      "injection_id": "slice-constant",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        13
+      ],
+      "ordinal": 0,
+      "priority": 50,
+      "require": 1,
+      "selector": "2",
+      "site_fingerprint": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+      "slice": {
+        "end": 9,
+        "from": {
+          "call": 1,
+          "expression": 3,
+          "fingerprint": "d6b61562fe30f38f65d1f58bdd887e555ef13112473fcc8624b95db04f795fd1",
+          "ordinal": 0,
+          "require": 1,
+          "selector": "begin"
+        },
+        "start": 3,
+        "to": {
+          "call": 3,
+          "expression": 9,
+          "fingerprint": "24b91dffc9c7f060e0f8d3dc8ca2b894b749279bbc3474333b3d5c2c83c69718",
+          "ordinal": 0,
+          "require": 1,
+          "selector": "end"
+        }
+      },
+      "target": "scoped_game::sliced"
+    },
+    {
+      "argument": 0,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": 2,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 6,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "1ab16eb27665d0703ce52b3c221097076a34c2679966f34d180cc5e912c7e563",
+      "helper_source": "fn modify(value:i32)->i32{let _=consume(0);value+10}\n",
+      "injection_id": "slice-arg",
+      "kind": "MODIFY_ARG",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        13
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "consume",
+      "site_fingerprint": "8c270384a188df6ec3586397a1731c5736157a7102e63454facd12ba13729702",
+      "slice": {
+        "end": 9,
+        "from": {
+          "call": 1,
+          "expression": 3,
+          "fingerprint": "d6b61562fe30f38f65d1f58bdd887e555ef13112473fcc8624b95db04f795fd1",
+          "ordinal": 0,
+          "require": 1,
+          "selector": "begin"
+        },
+        "start": 3,
+        "to": {
+          "call": 3,
+          "expression": 9,
+          "fingerprint": "24b91dffc9c7f060e0f8d3dc8ca2b894b749279bbc3474333b3d5c2c83c69718",
+          "ordinal": 0,
+          "require": 1,
+          "selector": "end"
+        }
+      },
+      "target": "scoped_game::sliced"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "first",
+          "ty": "&i32",
+          "value": "$local_ref:first:0"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 2,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "first",
+          "expression": "&first",
+          "local": {
+            "fingerprint": "5775043e3ea97c73e14a3d9345f637a26aa5ee63e795fb7f5e6da655b95706a1",
+            "id": 1,
+            "mutable": false,
+            "name": "first",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": null
+          },
+          "ty": "&i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 6,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "1ab16eb27665d0703ce52b3c221097076a34c2679966f34d180cc5e912c7e563",
+      "helper_source": "fn capture(first:&i32,log:&mut Vec<&'static str>){assert_eq!(*first,2);log.push(\"capture-first\");}\n",
+      "injection_id": "slice-capture",
+      "kind": "BEFORE_CALL",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        13
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "consume",
+      "site_fingerprint": "8c270384a188df6ec3586397a1731c5736157a7102e63454facd12ba13729702",
+      "slice": {
+        "end": 9,
+        "from": {
+          "call": 1,
+          "expression": 3,
+          "fingerprint": "d6b61562fe30f38f65d1f58bdd887e555ef13112473fcc8624b95db04f795fd1",
+          "ordinal": 0,
+          "require": 1,
+          "selector": "begin"
+        },
+        "start": 3,
+        "to": {
+          "call": 3,
+          "expression": 9,
+          "fingerprint": "24b91dffc9c7f060e0f8d3dc8ca2b894b749279bbc3474333b3d5c2c83c69718",
+          "ordinal": 0,
+          "require": 1,
+          "selector": "end"
+        }
+      },
+      "target": "scoped_game::sliced"
+    },
+    {
+      "argument": 1,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 1,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "37eb5127f8d0e06dad42f1dab1c21f392b54dfb2657979f4125a9eeb87d26dd9",
+      "helper_source": "fn modify(value:i32)->i32{value+1}\n",
+      "injection_id": "single",
+      "kind": "MODIFY_ARG",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        17
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "combine",
+      "site_fingerprint": "764379dd9b28c2e53b411f0022e98da3e06eb610ee33036119cd77f4e4a0ba8a",
+      "target": "scoped_game::jointly"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "args",
+          "ty": "(String,i32,Trace)",
+          "value": "$args"
+        },
+        {
+          "name": "bonus",
+          "ty": "&i32",
+          "value": "$local_ref:bonus:0"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "captures": [
+        {
+          "binding": "bonus",
+          "expression": "&bonus",
+          "local": {
+            "fingerprint": "375b1a2f76780b46eae4a2c7667e00758edaaeac55b70e4d01a7206b434af3b4",
+            "id": 2,
+            "mutable": false,
+            "name": "bonus",
+            "ordinal": 0,
+            "parameter": false,
+            "supported": true,
+            "ty": "i32"
+          },
+          "ty": "&i32"
+        }
+      ],
+      "constant_site": null,
+      "contract": {
+        "bundle": {
+          "inputs": [
+            "String",
+            "i32",
+            "Trace"
+          ],
+          "output": "String",
+          "receiver": null
+        },
+        "operation": null,
+        "output": "(String , i32 , Trace)",
+        "value": "(String , i32 , Trace)"
+      },
+      "expression_site": 1,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "37eb5127f8d0e06dad42f1dab1c21f392b54dfb2657979f4125a9eeb87d26dd9",
+      "helper_source": "fn modify(args:(String,i32,Trace),bonus:&i32)->(String,i32,Trace){let(value,number,trace)=args;trace.borrow_mut().push(\"tuple-alpha\");(value+\"a\",number+*bonus,trace)}\n",
+      "injection_id": "tuple",
+      "kind": "MODIFY_ARGS",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        17
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "combine",
+      "site_fingerprint": "764379dd9b28c2e53b411f0022e98da3e06eb610ee33036119cd77f4e4a0ba8a",
+      "target": "scoped_game::jointly"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "String",
+          "value": "$arg0"
+        },
+        {
+          "name": "number",
+          "ty": "i32",
+          "value": "$arg1"
+        },
+        {
+          "name": "trace",
+          "ty": "Trace",
+          "value": "$arg2"
+        },
+        {
+          "name": "original",
+          "ty": "impl FnOnce(String,i32,Trace)->String",
+          "value": "$operation"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": {
+          "inputs": [
+            "String",
+            "i32",
+            "Trace"
+          ],
+          "method": false,
+          "output": "String"
+        },
+        "output": "String",
+        "value": null
+      },
+      "expression_site": 1,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "37eb5127f8d0e06dad42f1dab1c21f392b54dfb2657979f4125a9eeb87d26dd9",
+      "helper_source": "fn around(value:String,number:i32,trace:Trace,original:impl FnOnce(String,i32,Trace)->String)->String{trace.borrow_mut().push(\"wrap\");original(value+\"w\",number,trace)+\"!\"}\n",
+      "injection_id": "wrap",
+      "kind": "WRAP_OPERATION",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        17
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "combine",
+      "site_fingerprint": "764379dd9b28c2e53b411f0022e98da3e06eb610ee33036119cd77f4e4a0ba8a",
+      "target": "scoped_game::jointly"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "args",
+          "ty": "(String,i32,Trace)",
+          "value": "$args"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "bundle": {
+          "inputs": [
+            "String",
+            "i32",
+            "Trace"
+          ],
+          "output": "String",
+          "receiver": null
+        },
+        "operation": null,
+        "output": "(String , i32 , Trace)",
+        "value": "(String , i32 , Trace)"
+      },
+      "expression_site": 1,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "37eb5127f8d0e06dad42f1dab1c21f392b54dfb2657979f4125a9eeb87d26dd9",
+      "helper_source": "fn modify(args:(String,i32,Trace))->(String,i32,Trace){let(value,number,trace)=args;trace.borrow_mut().push(\"tuple-beta\");(value+\"b\",number*2,trace)}\n",
+      "injection_id": "tuple",
+      "kind": "MODIFY_ARGS",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        17
+      ],
+      "ordinal": 0,
+      "priority": 50,
+      "require": 1,
+      "selector": "combine",
+      "site_fingerprint": "764379dd9b28c2e53b411f0022e98da3e06eb610ee33036119cd77f4e4a0ba8a",
+      "target": "scoped_game::jointly"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "args",
+          "ty": "(i32,Trace)",
+          "value": "$args"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "bundle": {
+          "inputs": [
+            "i32",
+            "Trace"
+          ],
+          "output": "i32",
+          "receiver": "& mut Entity"
+        },
+        "operation": null,
+        "output": "(i32 , Trace)",
+        "value": "(i32 , Trace)"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "0fa1b94eceb326b875f7aef1b0dbba8198445293d355015c7bda3d9e5a2e865a",
+      "helper_source": "fn modify(args:(i32,Trace))->(i32,Trace){let(number,trace)=args;(number+3,trace)}\n",
+      "injection_id": "method-tuple",
+      "kind": "MODIFY_ARGS",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        18
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "entity.add_traced",
+      "site_fingerprint": "cdea43cdc0d5f2373479a13ae386a69a2fa40281f8b63e6120bfd8a3ee333574",
+      "target": "scoped_game::method"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "args",
+          "ty": "(i32,Trace)",
+          "value": "$args"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "bundle": {
+          "inputs": [
+            "i32",
+            "Trace"
+          ],
+          "output": "i32",
+          "receiver": "& mut Entity"
+        },
+        "operation": null,
+        "output": "(i32 , Trace)",
+        "value": "(i32 , Trace)"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "0fa1b94eceb326b875f7aef1b0dbba8198445293d355015c7bda3d9e5a2e865a",
+      "helper_source": "fn modify(args:(i32,Trace))->(i32,Trace){let(number,trace)=args;(number*2,trace)}\n",
+      "injection_id": "method-tuple",
+      "kind": "MODIFY_ARGS",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        18
+      ],
+      "ordinal": 0,
+      "priority": 50,
+      "require": 1,
+      "selector": "entity.add_traced",
+      "site_fingerprint": "cdea43cdc0d5f2373479a13ae386a69a2fa40281f8b63e6120bfd8a3ee333574",
+      "target": "scoped_game::method"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "args",
+          "ty": "(&mut i32,i32)",
+          "value": "$args"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "bundle": {
+          "inputs": [
+            "& mut i32",
+            "i32"
+          ],
+          "output": "i32",
+          "receiver": null
+        },
+        "operation": null,
+        "output": "(& mut i32 , i32)",
+        "value": "(& mut i32 , i32)"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "e456ae4a9d0df7eb0b19bf9c6dc02d3b1d3248ae23713be4b6668df40f45312f",
+      "helper_source": "fn modify(args:(&mut i32,i32))->(&mut i32,i32){(args.0,args.1+1)}\n",
+      "injection_id": "reborrow",
+      "kind": "MODIFY_ARGS",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        20
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "add_to",
+      "site_fingerprint": "0d455471ece3efe8de87fe60c4b9aea87bdaf0a3442a197c7f38ce9288d2ca51",
+      "target": "scoped_game::reborrow"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "args",
+          "ty": "(Token,i32)",
+          "value": "$args"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "bundle": {
+          "inputs": [
+            "Token",
+            "i32"
+          ],
+          "output": "i32",
+          "receiver": null
+        },
+        "operation": null,
+        "output": "(Token , i32)",
+        "value": "(Token , i32)"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "238591000626d1b7abaa21fb28aa0c328a4585936ccca2a277b7ed3ac256989b",
+      "helper_source": "fn modify(args:(Token,i32))->(Token,i32){args.0.0.borrow_mut().push(\"tuple\");(args.0,args.1+1)}\n",
+      "injection_id": "owned-drop",
+      "kind": "MODIFY_ARGS",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        24
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "consume_token",
+      "site_fingerprint": "e849fafc27dd896c5c7f195b0a0fbae44b2d81dfb71d6fffee957feaa852554d",
+      "target": "scoped_game::owned_drop"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "args",
+          "ty": "(i32,i32)",
+          "value": "$args"
+        },
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "trace"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "bundle": {
+          "inputs": [
+            "i32",
+            "i32"
+          ],
+          "output": "i32",
+          "receiver": null
+        },
+        "operation": null,
+        "output": "(i32 , i32)",
+        "value": "(i32 , i32)"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "b5df12cc66b18f1414b9c2feb490822e89b5a003eb31be9230fe6563028b059e",
+      "helper_source": "fn modify(args:(i32,i32),trace:&Trace)->(i32,i32){trace.borrow_mut().push(\"tuple\");(args.0+1,args.1)}\n",
+      "injection_id": "temporary",
+      "kind": "MODIFY_ARGS",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        28
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "add",
+      "site_fingerprint": "45a3ea09d378ce9139b886ac0d5b55433eea1001777fa38ae502acf613bd933a",
+      "target": "scoped_game::temporary"
+    }
+  ],
+  "schema": 4,
+  "transformer": "0.4.0"
+}

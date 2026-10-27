@@ -74,7 +74,7 @@ fn run(cli: Cli) -> Result<serde_json::Value> {
             let _lock = staging::lock(&out, "plan")?;
             staging::write_atomic(&out, &bytes)?;
             return Ok(
-                json!({"status":"ok", "plan":out, "injections":plan.injections.len(), "seconds":start.elapsed().as_secs_f64()}),
+                json!({"status":"ok", "plan":out, "injections":plan.injections.len(), "bridges":plan.bridges.len(), "modules":plan.modules.len(), "seconds":start.elapsed().as_secs_f64()}),
             );
         }
         Action::Apply(common) => (common, None),
@@ -120,7 +120,7 @@ fn run(cli: Cli) -> Result<serde_json::Value> {
     let files = horizon_mixins_transform::transform(&root, &plan)?;
     let stage_changed = staging::publish(&root, &out, files, &plan)?;
     let transformation_seconds = start.elapsed().as_secs_f64();
-    let mut result = json!({"status":"ok", "stage":out, "injections":plan.injections.len(),
+    let mut result = json!({"status":"ok", "stage":out, "injections":plan.injections.len(), "bridges":plan.bridges.len(), "modules":plan.modules.len(),
         "stage_changed":stage_changed, "transformation_seconds":transformation_seconds});
     if let Some((_, packages)) = check {
         let target = target.unwrap();

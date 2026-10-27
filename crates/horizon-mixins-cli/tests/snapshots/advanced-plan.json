@@ -1,0 +1,1518 @@
+{
+  "injections": [
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "3d98e17b082b9922a1f08c355266c6ea8b7805d8dfa766814078a6ed217721cd",
+      "helper_source": "fn first(log: &mut Vec<&'static str>) { log.push(\"head-first\"); }\n",
+      "injection_id": "first",
+      "kind": "HEAD",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        2
+      ],
+      "ordinal": null,
+      "priority": 300,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::calculate"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "input",
+          "ty": "i32",
+          "value": "input"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": true,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": ":: core :: ops :: ControlFlow < i32 >",
+        "value": null
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "3d98e17b082b9922a1f08c355266c6ea8b7805d8dfa766814078a6ed217721cd",
+      "helper_source": "fn cancel(input: i32, log: &mut Vec<&'static str>) -> std::ops::ControlFlow<i32> {\n    log.push(\"cancel-alpha\");\n    if input == 0 { return std::ops::ControlFlow::Break(7); }\n    std::ops::ControlFlow::Continue(())\n}\n",
+      "injection_id": "cancel",
+      "kind": "HEAD",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        2
+      ],
+      "ordinal": null,
+      "priority": 200,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::calculate"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "input",
+          "ty": "i32",
+          "value": "input"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": true,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": ":: core :: ops :: ControlFlow < i32 >",
+        "value": null
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "3d98e17b082b9922a1f08c355266c6ea8b7805d8dfa766814078a6ed217721cd",
+      "helper_source": "fn cancel(input: i32, log: &mut Vec<&'static str>) -> std::ops::ControlFlow<i32> {\n    log.push(\"cancel-beta\");\n    if input == 1 { return std::ops::ControlFlow::Break(11); }\n    std::ops::ControlFlow::Continue(())\n}\n",
+      "injection_id": "cancel",
+      "kind": "HEAD",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        2
+      ],
+      "ordinal": null,
+      "priority": 150,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::calculate"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "3d98e17b082b9922a1f08c355266c6ea8b7805d8dfa766814078a6ed217721cd",
+      "helper_source": "fn on_return(value: i32, log: &mut Vec<&'static str>) -> i32 {\n    log.push(\"return-alpha\"); value + 3\n}\n",
+      "injection_id": "return",
+      "kind": "RETURN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        2
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::calculate"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "3d98e17b082b9922a1f08c355266c6ea8b7805d8dfa766814078a6ed217721cd",
+      "helper_source": "fn on_return(value: i32, log: &mut Vec<&'static str>) -> i32 {\n    log.push(\"return-beta\"); value * 2\n}\n",
+      "injection_id": "return",
+      "kind": "RETURN",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        2
+      ],
+      "ordinal": null,
+      "priority": 50,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::calculate"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "3d98e17b082b9922a1f08c355266c6ea8b7805d8dfa766814078a6ed217721cd",
+      "helper_source": "fn last(log: &mut Vec<&'static str>) { log.push(\"head-last\"); }\n",
+      "injection_id": "last",
+      "kind": "HEAD",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        2
+      ],
+      "ordinal": null,
+      "priority": 0,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::calculate"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "5c8c53d8482f5fdc765d9f4ab5f8e465df17cd15f927127c5639593b36205e30",
+      "helper_source": "fn modify(value: i32) -> i32 { if value == 5 { return 6; } value + 1 }\n",
+      "injection_id": "exit-return",
+      "kind": "RETURN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        3
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::exits"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "()",
+          "value": "$value"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": "()"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "e0cca9848b96912b5d3d7ab425710b1dff531d229036e5bafcdd5220cba75f0c",
+      "helper_source": "fn on_return(value: (), log: &mut Vec<&'static str>) { let _ = value; log.push(\"return\"); }\n",
+      "injection_id": "unit-return",
+      "kind": "RETURN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        4
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::unit"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "&i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "& i32",
+        "value": "& i32"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "17a8f981a83f590ab31db713da906d1f31a0fe11869bfb51261619edb3ea33cf",
+      "helper_source": "fn modify(value: &i32) -> &i32 { value }\n",
+      "injection_id": "borrowed-return",
+      "kind": "RETURN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        5
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::borrowed"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "String",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "String",
+        "value": "String"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "bfb49c5816ae68e8799ccf20681361ba9df8b44c6c25684b3ecd023a989fd1c3",
+      "helper_source": "fn modify(value: String) -> String { value + \"!\" }\n",
+      "injection_id": "owned-return",
+      "kind": "RETURN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        6
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::owned"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        },
+        {
+          "name": "trace",
+          "ty": "&Trace",
+          "value": "&trace"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "7e92da4d0f9948a72d15199a44cf37d886924e08f6f9c5f1dc55e96f5273a8b9",
+      "helper_source": "fn modify(value: i32, trace: &Trace) -> i32 { trace.borrow_mut().push(\"return\"); value + 1 }\n",
+      "injection_id": "drop-return",
+      "kind": "RETURN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        9
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::drop_return"
+    },
+    {
+      "argument": 1,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "e55bf09da08be48f05bf0e16962a6cc42942ef6a446c0921d3b9fafb72a6ccbe",
+      "helper_source": "fn modify(value: i32) -> i32 { value + 10 }\n",
+      "injection_id": "argument-number",
+      "kind": "MODIFY_ARG",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        13
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "sink",
+      "site_fingerprint": "6891e960fe5c6968791065bf5676ecc8fad1197f6236eab8d2b67e8eb4e73752",
+      "target": "advanced_game::arguments"
+    },
+    {
+      "argument": 0,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "String",
+          "value": "$value"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "String",
+        "value": "String"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "e55bf09da08be48f05bf0e16962a6cc42942ef6a446c0921d3b9fafb72a6ccbe",
+      "helper_source": "fn modify(value: String, log: &mut Vec<&'static str>) -> String {\n    log.push(\"modify-alpha\"); value + \"a\"\n}\n",
+      "injection_id": "argument-owned",
+      "kind": "MODIFY_ARG",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        13
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "sink",
+      "site_fingerprint": "6891e960fe5c6968791065bf5676ecc8fad1197f6236eab8d2b67e8eb4e73752",
+      "target": "advanced_game::arguments"
+    },
+    {
+      "argument": 0,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "String",
+          "value": "$value"
+        },
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "String",
+        "value": "String"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "e55bf09da08be48f05bf0e16962a6cc42942ef6a446c0921d3b9fafb72a6ccbe",
+      "helper_source": "fn modify(value: String, log: &mut Vec<&'static str>) -> String {\n    log.push(\"modify-beta\"); value + \"b\"\n}\n",
+      "injection_id": "argument-owned",
+      "kind": "MODIFY_ARG",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        13
+      ],
+      "ordinal": 0,
+      "priority": 50,
+      "require": 1,
+      "selector": "sink",
+      "site_fingerprint": "6891e960fe5c6968791065bf5676ecc8fad1197f6236eab8d2b67e8eb4e73752",
+      "target": "advanced_game::arguments"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "counter",
+          "ty": "&mut Counter",
+          "value": "$receiver"
+        },
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$arg0"
+        },
+        {
+          "name": "trace",
+          "ty": "Trace",
+          "value": "$arg1"
+        },
+        {
+          "name": "original",
+          "ty": "impl FnOnce(&mut Counter, i32, Trace) -> i32",
+          "value": "$operation"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": {
+          "inputs": [
+            "& mut Counter",
+            "i32",
+            "Trace"
+          ],
+          "method": true,
+          "output": "i32"
+        },
+        "output": "i32",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "e657a2243743f4d0a3dd7b61863b01538f3091d80ac0fd2a50c3713b959cf0bd",
+      "helper_source": "fn around(counter: &mut Counter, value: i32, trace: Trace, original: impl FnOnce(&mut Counter, i32, Trace) -> i32) -> i32 {\n    trace.borrow_mut().push(\"alpha-enter\");\n    let retained = trace.clone();\n    let output = original(counter, value + 1, trace);\n    retained.borrow_mut().push(\"alpha-exit\");\n    output + 100\n}\n",
+      "injection_id": "wrap-self",
+      "kind": "WRAP_OPERATION",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        15,
+        3
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "self.apply_traced",
+      "site_fingerprint": "fc4d762121bc0999a8439de59d588964b6dad8aee8f442db0ce086b8b9013595",
+      "target": "advanced_game::Counter::wrapped_self"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "counter",
+          "ty": "&mut Counter",
+          "value": "$receiver"
+        },
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$arg0"
+        },
+        {
+          "name": "trace",
+          "ty": "Trace",
+          "value": "$arg1"
+        },
+        {
+          "name": "original",
+          "ty": "impl FnOnce(&mut Counter, i32, Trace) -> i32",
+          "value": "$operation"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": {
+          "inputs": [
+            "& mut Counter",
+            "i32",
+            "Trace"
+          ],
+          "method": true,
+          "output": "i32"
+        },
+        "output": "i32",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "e657a2243743f4d0a3dd7b61863b01538f3091d80ac0fd2a50c3713b959cf0bd",
+      "helper_source": "fn around(counter: &mut Counter, value: i32, trace: Trace, original: impl FnOnce(&mut Counter, i32, Trace) -> i32) -> i32 {\n    trace.borrow_mut().push(\"beta-enter\");\n    let retained = trace.clone();\n    let output = original(counter, value * 2, trace);\n    retained.borrow_mut().push(\"beta-exit\");\n    output + 10\n}\n",
+      "injection_id": "wrap-self",
+      "kind": "WRAP_OPERATION",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        15,
+        3
+      ],
+      "ordinal": 0,
+      "priority": 50,
+      "require": 1,
+      "selector": "self.apply_traced",
+      "site_fingerprint": "fc4d762121bc0999a8439de59d588964b6dad8aee8f442db0ce086b8b9013595",
+      "target": "advanced_game::Counter::wrapped_self"
+    },
+    {
+      "argument": 0,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "94a8eb26f918ff61db0324539f431b6a56a87d63c9b84515e3b1ba82924ba4cb",
+      "helper_source": "fn modify(value: i32) -> i32 { value + 10 }\n",
+      "injection_id": "argument-method",
+      "kind": "MODIFY_ARG",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        16
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "counter.apply",
+      "site_fingerprint": "d67982c380c6575723dae268c0ff78c98d151f95454362e7840bfcace8db31fe",
+      "target": "advanced_game::method_argument"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 1,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 3,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "2f95e5d38a600ab428a34ae6d1d1305d29c90bf139151cced6d12550133ed905",
+      "helper_source": "fn modify(value: i32) -> i32 { let _ = 3; value + 10 }\n",
+      "injection_id": "constant",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        17
+      ],
+      "ordinal": 1,
+      "priority": 100,
+      "require": 2,
+      "selector": "3",
+      "site_fingerprint": "4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce",
+      "target": "advanced_game::constants"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 1,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 3,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "2f95e5d38a600ab428a34ae6d1d1305d29c90bf139151cced6d12550133ed905",
+      "helper_source": "fn modify(value: i32) -> i32 { let _ = 3; value * 2 }\n",
+      "injection_id": "constant",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        17
+      ],
+      "ordinal": 1,
+      "priority": 50,
+      "require": 2,
+      "selector": "3",
+      "site_fingerprint": "4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce",
+      "target": "advanced_game::constants"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 2,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 5,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "2f95e5d38a600ab428a34ae6d1d1305d29c90bf139151cced6d12550133ed905",
+      "helper_source": "fn modify(value: i32) -> i32 { value + 1 }\n",
+      "injection_id": "negative",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        17
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "-2",
+      "site_fingerprint": "84685b8e64d07fb27c276ceb95711912e90e60cd8ed4a3044d83652795ad3cc4",
+      "target": "advanced_game::constants"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "&'static str",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 0,
+      "contract": {
+        "operation": null,
+        "output": "& 'static str",
+        "value": "& 'static str"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "9d01f15188eb51f2a27912f283c2632723e2e9ba3210758d9a940461635226a1",
+      "helper_source": "fn modify(value: &'static str) -> &'static str { if value == \"two words\" { \"rewritten\" } else { value } }\n",
+      "injection_id": "string",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        18
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "\"two words\"",
+      "site_fingerprint": "30b0c53cc188ba492964b63641d6868174efaf61bcaa58fc74bf9e0f349dd210",
+      "target": "advanced_game::text"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "bool",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 0,
+      "contract": {
+        "operation": null,
+        "output": "bool",
+        "value": "bool"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "238dbd49ebfaa295b79b43793b5cbe94fc9ea320faea63fa9b03681e1e90abcf",
+      "helper_source": "fn modify(value: bool) -> bool { !value }\n",
+      "injection_id": "bool",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        19
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "true",
+      "site_fingerprint": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
+      "target": "advanced_game::flag"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "char",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 0,
+      "contract": {
+        "operation": null,
+        "output": "char",
+        "value": "char"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "6bae690bae5f01e440b58af5242c19bca6ad7677f72ce41bf39c6b752f1e41d7",
+      "helper_source": "fn modify(value: char) -> char { if value == 'x' { 'y' } else { value } }\n",
+      "injection_id": "char",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        20
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "'x'",
+      "site_fingerprint": "4755bd1b01771ffabd88f76b2c68a47c68ae3f94aab0eb85a5ffd1f47780e249",
+      "target": "advanced_game::character"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "f64",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 0,
+      "contract": {
+        "operation": null,
+        "output": "f64",
+        "value": "f64"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "a20ff193ad60dc7a0e6a0055a2038b91f45157a7b4a4654f917eaec6f6a1adea",
+      "helper_source": "fn modify(value: f64) -> f64 { value * 2.0 }\n",
+      "injection_id": "float",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        21
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "1.5f64",
+      "site_fingerprint": "d4d7977d59b5546fe54feae18b46de2d49dba64f3f76cf07f460cd162a31525d",
+      "target": "advanced_game::float"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "u32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 0,
+      "contract": {
+        "operation": null,
+        "output": "u32",
+        "value": "u32"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "922e0c65306de3e28a1849cfcfc4ae86232e13cec611a7413c3b91183ecd9a99",
+      "helper_source": "fn modify(value: u32) -> u32 { value + 1 }\n",
+      "injection_id": "hex",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        22
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "0x10u32",
+      "site_fingerprint": "eaa97c37ddcbad139540298bccddae27affb3ff3e932389fc9795ef944f34d3c",
+      "target": "advanced_game::hex"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 1,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 3,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "ba5171dbf6e373913a4c9a03187bb203d2861da6bbb0bfd807f667febf9a5a0b",
+      "helper_source": "fn modify(value: i32) -> i32 { value + 1 }\n",
+      "injection_id": "pattern",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        23
+      ],
+      "ordinal": 1,
+      "priority": 100,
+      "require": 2,
+      "selector": "3",
+      "site_fingerprint": "4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce",
+      "target": "advanced_game::pattern"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 0,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 1,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "22a4d9d6558c6919c8a0437cdad4823a72c85d072dc9f39442ca1e13cf15e6bc",
+      "helper_source": "fn modify(value: i32) -> i32 { value + 1 }\n",
+      "injection_id": "array",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        24
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "3",
+      "site_fingerprint": "4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce",
+      "target": "advanced_game::array"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "String",
+          "value": "$arg0"
+        },
+        {
+          "name": "trace",
+          "ty": "Trace",
+          "value": "$arg1"
+        },
+        {
+          "name": "original",
+          "ty": "impl FnOnce(String, Trace) -> String",
+          "value": "$operation"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": {
+          "inputs": [
+            "String",
+            "Trace"
+          ],
+          "method": false,
+          "output": "String"
+        },
+        "output": "String",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "5d85567f4c1d42d5b35e7a82ae19db981b6600f09f14614a1b9c4346da8f8e20",
+      "helper_source": "fn around(value: String, trace: Trace, original: impl FnOnce(String, Trace) -> String) -> String {\n    trace.borrow_mut().push(\"alpha-enter\");\n    let retained = trace.clone();\n    let output = original(value + \"a\", trace);\n    retained.borrow_mut().push(\"alpha-exit\");\n    output + \"A\"\n}\n",
+      "injection_id": "wrap-owned",
+      "kind": "WRAP_OPERATION",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        27
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "original_owned",
+      "site_fingerprint": "44e68661ae26a162b0a3287045f03aea5bf9b6b26f31d6ac144428e872acd49f",
+      "target": "advanced_game::wrapping"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "String",
+          "value": "$arg0"
+        },
+        {
+          "name": "trace",
+          "ty": "Trace",
+          "value": "$arg1"
+        },
+        {
+          "name": "original",
+          "ty": "impl FnOnce(String, Trace) -> String",
+          "value": "$operation"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": {
+          "inputs": [
+            "String",
+            "Trace"
+          ],
+          "method": false,
+          "output": "String"
+        },
+        "output": "String",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "5d85567f4c1d42d5b35e7a82ae19db981b6600f09f14614a1b9c4346da8f8e20",
+      "helper_source": "fn around(value: String, trace: Trace, original: impl FnOnce(String, Trace) -> String) -> String {\n    trace.borrow_mut().push(\"beta-enter\");\n    let retained = trace.clone();\n    let output = original(value + \"b\", trace);\n    retained.borrow_mut().push(\"beta-exit\");\n    output + \"B\"\n}\n",
+      "injection_id": "wrap-owned",
+      "kind": "WRAP_OPERATION",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        27
+      ],
+      "ordinal": 0,
+      "priority": 50,
+      "require": 1,
+      "selector": "original_owned",
+      "site_fingerprint": "44e68661ae26a162b0a3287045f03aea5bf9b6b26f31d6ac144428e872acd49f",
+      "target": "advanced_game::wrapping"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "counter",
+          "ty": "&mut Counter",
+          "value": "$receiver"
+        },
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$arg0"
+        },
+        {
+          "name": "trace",
+          "ty": "Trace",
+          "value": "$arg1"
+        },
+        {
+          "name": "original",
+          "ty": "impl FnOnce(&mut Counter, i32, Trace) -> i32",
+          "value": "$operation"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": {
+          "inputs": [
+            "& mut Counter",
+            "i32",
+            "Trace"
+          ],
+          "method": true,
+          "output": "i32"
+        },
+        "output": "i32",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "1547300a0afa8aab5af5f2f92827c54d412769ff640d0c0058a267c8081e8faf",
+      "helper_source": "fn around(counter: &mut Counter, value: i32, trace: Trace, original: impl FnOnce(&mut Counter, i32, Trace) -> i32) -> i32 {\n    trace.borrow_mut().push(\"alpha-enter\");\n    let retained = trace.clone();\n    let output = original(counter, value + 1, trace);\n    retained.borrow_mut().push(\"alpha-exit\");\n    output + 100\n}\n",
+      "injection_id": "wrap-method",
+      "kind": "WRAP_OPERATION",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        28
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "counter.apply_traced",
+      "site_fingerprint": "735a8a1f585387cb8684300912287ee728c8d4a9e8368939723365e4a67e5890",
+      "target": "advanced_game::wrapping_method"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "counter",
+          "ty": "&mut Counter",
+          "value": "$receiver"
+        },
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$arg0"
+        },
+        {
+          "name": "trace",
+          "ty": "Trace",
+          "value": "$arg1"
+        },
+        {
+          "name": "original",
+          "ty": "impl FnOnce(&mut Counter, i32, Trace) -> i32",
+          "value": "$operation"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": {
+          "inputs": [
+            "& mut Counter",
+            "i32",
+            "Trace"
+          ],
+          "method": true,
+          "output": "i32"
+        },
+        "output": "i32",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "1547300a0afa8aab5af5f2f92827c54d412769ff640d0c0058a267c8081e8faf",
+      "helper_source": "fn around(counter: &mut Counter, value: i32, trace: Trace, original: impl FnOnce(&mut Counter, i32, Trace) -> i32) -> i32 {\n    trace.borrow_mut().push(\"beta-enter\");\n    let retained = trace.clone();\n    let output = original(counter, value * 2, trace);\n    retained.borrow_mut().push(\"beta-exit\");\n    output + 10\n}\n",
+      "injection_id": "wrap-method",
+      "kind": "WRAP_OPERATION",
+      "mod_id": "beta",
+      "mod_version": "0.1.0",
+      "node": [
+        28
+      ],
+      "ordinal": 0,
+      "priority": 50,
+      "require": 1,
+      "selector": "counter.apply_traced",
+      "site_fingerprint": "735a8a1f585387cb8684300912287ee728c8d4a9e8368939723365e4a67e5890",
+      "target": "advanced_game::wrapping_method"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "original",
+          "ty": "impl FnOnce() -> i32",
+          "value": "$operation"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": {
+          "inputs": [],
+          "method": false,
+          "output": "i32"
+        },
+        "output": "i32",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "d37841b6ef48a6ad62150fb5d6d858e452e15be328c818fede4c2b29dfe04c8e",
+      "helper_source": "fn around(original: impl FnOnce() -> i32) -> i32 { let _ = original; 19 }\n",
+      "injection_id": "skip",
+      "kind": "WRAP_OPERATION",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        30
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "never_called",
+      "site_fingerprint": "2175318a89713f5ad5ba26d7786a45bcbc29f5b5b056ba63233421d70c4c4054",
+      "target": "advanced_game::skipping"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "59f10573be0ef4822432e0df8e5ec858b5fe5335aa8b4cd395fc699285ec2f8f",
+      "helper_source": "fn modify(value: i32) -> i32 { value + 1 }\n",
+      "injection_id": "combined-return",
+      "kind": "RETURN",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        32
+      ],
+      "ordinal": null,
+      "priority": 100,
+      "require": null,
+      "selector": null,
+      "site_fingerprint": null,
+      "target": "advanced_game::combined"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": null,
+      "cancellable": false,
+      "constant_site": 0,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 2,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "59f10573be0ef4822432e0df8e5ec858b5fe5335aa8b4cd395fc699285ec2f8f",
+      "helper_source": "fn modify(value: i32) -> i32 { value + 1 }\n",
+      "injection_id": "combined-constant",
+      "kind": "MODIFY_CONSTANT",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        32
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "2",
+      "site_fingerprint": "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+      "target": "advanced_game::combined"
+    },
+    {
+      "argument": 0,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$value"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "i32",
+        "value": "i32"
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "59f10573be0ef4822432e0df8e5ec858b5fe5335aa8b4cd395fc699285ec2f8f",
+      "helper_source": "fn modify(value: i32) -> i32 { value + 4 }\n",
+      "injection_id": "combined-argument",
+      "kind": "MODIFY_ARG",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        32
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "base",
+      "site_fingerprint": "c57c7439a528f74c25ee28ab03872372f733cb312ba3d14f167c747f4cd52992",
+      "target": "advanced_game::combined"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "log",
+          "ty": "&mut Vec<&'static str>",
+          "value": "&mut *log"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": null,
+        "output": "()",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "59f10573be0ef4822432e0df8e5ec858b5fe5335aa8b4cd395fc699285ec2f8f",
+      "helper_source": "fn before(log: &mut Vec<&'static str>) { log.push(\"before\"); }\n",
+      "injection_id": "combined-before",
+      "kind": "BEFORE_CALL",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        32
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "base",
+      "site_fingerprint": "c57c7439a528f74c25ee28ab03872372f733cb312ba3d14f167c747f4cd52992",
+      "target": "advanced_game::combined"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$arg0"
+        },
+        {
+          "name": "original",
+          "ty": "impl FnOnce(i32) -> i32",
+          "value": "$operation"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": {
+          "inputs": [
+            "i32"
+          ],
+          "method": false,
+          "output": "i32"
+        },
+        "output": "i32",
+        "value": null
+      },
+      "expression_site": 0,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "59f10573be0ef4822432e0df8e5ec858b5fe5335aa8b4cd395fc699285ec2f8f",
+      "helper_source": "fn around(value: i32, original: impl FnOnce(i32) -> i32) -> i32 { original(value * 2) + 5 }\n",
+      "injection_id": "combined-wrap",
+      "kind": "WRAP_OPERATION",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        32
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "base",
+      "site_fingerprint": "c57c7439a528f74c25ee28ab03872372f733cb312ba3d14f167c747f4cd52992",
+      "target": "advanced_game::combined"
+    },
+    {
+      "argument": null,
+      "bindings": [
+        {
+          "name": "value",
+          "ty": "i32",
+          "value": "$arg0"
+        },
+        {
+          "name": "original",
+          "ty": "impl FnOnce(i32) -> i32",
+          "value": "$operation"
+        }
+      ],
+      "call_site": 0,
+      "cancellable": false,
+      "constant_site": null,
+      "contract": {
+        "operation": {
+          "inputs": [
+            "i32"
+          ],
+          "method": false,
+          "output": "i32"
+        },
+        "output": "i32",
+        "value": null
+      },
+      "expression_site": 2,
+      "file": "game/src/lib.rs",
+      "function_fingerprint": "e9e82b099589775a4f41ec6b0cc5b70fe897b265ebe28184ee89d9ee0a499364",
+      "helper_source": "fn around(value: i32, original: impl FnOnce(i32) -> i32) -> i32 { original(value * 2) + 5 }\n",
+      "injection_id": "nested-wrap",
+      "kind": "WRAP_OPERATION",
+      "mod_id": "alpha",
+      "mod_version": "0.1.0",
+      "node": [
+        33
+      ],
+      "ordinal": 0,
+      "priority": 100,
+      "require": 1,
+      "selector": "base",
+      "site_fingerprint": "d48fe849fab772c9e110001f90ce7c56563e957d8320251788150544194cdc32",
+      "target": "advanced_game::nested_wrap"
+    }
+  ],
+  "schema": 4,
+  "transformer": "0.4.0"
+}
