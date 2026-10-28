@@ -38,17 +38,17 @@ sites or exits. If a cancellable hook continues, the original body executes
 with its original returns, error propagation and destruction behavior. If it
 breaks, normal Rust return semantics drop the target's owned arguments once.
 
-Noncancellable HEAD-only hooks also support opaque expression and statement
-macro invocations, such as `matches!`, `assert!` and macro-generated early
-returns. Their tokens remain untouched; no expansion or selection inside them
+HEAD-only hooks, including cancellable HEAD, also support opaque expression and
+statement macro invocations, such as `format!`, `matches!`, `vec!`, `assert!`
+and macro-generated early returns. Their tokens remain untouched; no expansion or selection inside them
 is performed. Signature, type, pattern and item macros (including local
 `macro_rules!` definitions), unresolved cfg and attribute macros still fail
-closed. Attributes on macro invocations are checked as usual. Cancellable HEAD
-hooks retain the macro restriction. Async functions remain rejected. RETURN and
-site injections continue to use their stricter control-flow validation, including
+closed. Attributes on macro invocations are checked as usual. Cancelling HEAD
+returns before any original macro or local initializer executes. Async functions
+remain rejected. RETURN and site injections continue to use their stricter control-flow validation, including
 when combined with HEAD. HEAD-only planning does not assign expression/local
-coordinates inside the untouched body;
-the transform skips expression traversal when there are no planned sites.
+coordinates inside the untouched body; the transform skips expression traversal
+when there are no planned sites.
 
 The compilation fixture tests two mods in priority order, closure errors,
 owned argument destruction, cancellation, stable lifetime IDs and deterministic
@@ -56,8 +56,15 @@ source/mtimes. It also tests rejection of RETURN over `?`, type generics,
 unsupported macro contexts, ambiguous module destinations and unsupported
 payloads. Macro HEAD tests compile two ordered callbacks, expression/statement
 macros, macro-generated early returns and tail values, and local/argument drops.
+Both list/repeat `vec!` forms and `format!` arguments execute exactly once;
+cancellable hooks exercise both Continue and Break before those expressions.
 Removing only the generated HEAD calls reproduces the original body AST;
 repeated staging preserves bytes and mtimes.
+
+This is preservation, not macro expansion: selectors cannot target calls or
+locals inside macro tokens. Body-rewriting hooks still reject even these common
+names, since their arguments can contain returns or other control flow and a
+local macro can shadow a standard macro. No name-based whitelist is used.
 
 ## Support modules
 

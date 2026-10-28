@@ -361,8 +361,7 @@ bindings=[{name="value",ty="Result<i32,&'static str>",value="$value"}]
     );
 }
 
-#[test]
-fn head_preserves_body_macros_early_returns_and_drop() {
+fn macro_fixture() -> Fixture {
     let f = fixture();
     f.replace(
         "engine/src/boundary.rs",
@@ -381,6 +380,16 @@ impl<'a> Host<'a> {"#,
         "let work = || if fail { Err(\"failure\") } else { Ok(3) };\n        let value = work()?;",
         r#"let _guard = Guard(self.log);
         assert!(std::matches!(fail, false | true));
+        let evaluations = std::cell::Cell::new(0);
+        let values = vec![
+            { evaluations.set(evaluations.get() + 1); 2 },
+            { evaluations.set(evaluations.get() + 1); 3 },
+        ];
+        let repeated = std::vec![{ evaluations.set(evaluations.get() + 1); values[0] }; 9];
+        let text = format!("{}", { evaluations.set(evaluations.get() + 1); repeated[0] + values[1] });
+        assert_eq!(evaluations.get(), 4);
+        assert_eq!(repeated.len(), 9);
+        assert!(matches!(text.as_str(), "5"));
         if matches!(fail, true) { stop!(); }
         let value = 3;"#,
     );
@@ -390,6 +399,12 @@ impl<'a> Host<'a> {"#,
         "if fail {vec![\"alpha\",\"beta\"]} else {vec![\"alpha\",\"beta\",\"body\"]}",
         "if fail {vec![\"alpha\",\"beta\",\"local_drop\"]} else {vec![\"alpha\",\"beta\",\"body\",\"local_drop\"]}",
     );
+    f
+}
+
+#[test]
+fn head_preserves_body_macros_early_returns_and_drop() {
+    let f = macro_fixture();
     let original = source::files(&f.root).unwrap();
     let plan = build_plan(&f.root, &f.mods).unwrap();
     let generated = horizon_mixins_transform::transform(&f.root, &plan).unwrap();
@@ -428,6 +443,46 @@ impl<'a> Host<'a> {"#,
     assert_eq!(f.run("check")["stage_changed"], false);
     assert_eq!(times, mtimes(&f.out));
     assert_eq!(original, source::files(&f.root).unwrap());
+}
+
+#[test]
+fn cancellable_head_preserves_macros_on_continue_and_skips_them_on_break() {
+    for cancel in [false, true] {
+        let f = macro_fixture();
+        f.replace(
+            "mods/alpha/horizon-mixin.toml",
+            "kind=\"HEAD\"",
+            "kind=\"HEAD\"\ncancellable=true",
+        );
+        let flow = if cancel {
+            "core::ops::ControlFlow::Break(Ok(9))"
+        } else {
+            "core::ops::ControlFlow::Continue(())"
+        };
+        fs::write(
+            f.mods.join("alpha/head.rs"),
+            format!("fn head(host: &mut Host<'_>) -> core::ops::ControlFlow<Result<i32, &'static str>> {{ host.log.borrow_mut().push(\"alpha\"); {flow} }}"),
+        ).unwrap();
+        if cancel {
+            // If any original macro executes, this deliberately fails. The
+            // skipped local Guard must not be constructed or dropped either.
+            f.replace("engine/src/boundary.rs", "false | true", "false if false");
+            f.replace(
+                "engine/src/boundary.rs",
+                "if fail {Err(\"failure\")} else {Ok(3)}",
+                "Ok(9)",
+            );
+            f.replace(
+                "engine/src/boundary.rs",
+                "if fail {vec![\"alpha\",\"beta\",\"local_drop\"]} else {vec![\"alpha\",\"beta\",\"body\",\"local_drop\"]}",
+                "vec![\"alpha\"]",
+            );
+        }
+        let original = source::files(&f.root).unwrap();
+        f.run("check");
+        assert_eq!(f.run("check")["stage_changed"], false);
+        assert_eq!(original, source::files(&f.root).unwrap());
+    }
 }
 
 #[test]
@@ -489,28 +544,22 @@ fn head_macro_exception_keeps_cfg_attributes_and_other_macro_contexts_restricted
             "E_UNSUPPORTED_MACRO",
         ),
     ] {
-        let f = fixture();
-        f.replace("engine/src/boundary.rs", from, to);
-        let error = build_plan(&f.root, &f.mods)
-            .err()
-            .unwrap_or_else(|| panic!("expected rejection of {to}"));
-        assert_eq!(error.code, code, "{to}");
+        for cancellable in [false, true] {
+            let f = fixture();
+            f.replace("engine/src/boundary.rs", from, to);
+            if cancellable {
+                f.replace(
+                    "mods/alpha/horizon-mixin.toml",
+                    "kind=\"HEAD\"",
+                    "kind=\"HEAD\"\ncancellable=true",
+                );
+            }
+            let error = build_plan(&f.root, &f.mods)
+                .err()
+                .unwrap_or_else(|| panic!("expected rejection of {to}"));
+            assert_eq!(error.code, code, "{to}");
+        }
     }
-    let f = fixture();
-    f.replace(
-        "engine/src/boundary.rs",
-        "let value = work()?;",
-        "assert!(true); let value = work()?;",
-    );
-    f.replace(
-        "mods/alpha/horizon-mixin.toml",
-        "kind=\"HEAD\"",
-        "kind=\"HEAD\"\ncancellable=true",
-    );
-    assert_eq!(
-        build_plan(&f.root, &f.mods).unwrap_err().code,
-        "E_UNSUPPORTED_MACRO"
-    );
 }
 
 #[test]

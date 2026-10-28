@@ -183,3 +183,12 @@ probes pass. First modded transform/stage: 0.369 s; Cargo compile: 2.53 s; Cargo
 plus tests: 12.169 s. Unchanged: 0.363 s transform/stage, 0.00 s compile,
 9.706 s Cargo plus tests. It still uses the same committed Horizon pin and no
 Minecraft assets or upstream source edits.
+
+HEAD-only macro preservation builds on contributor PR #2 and now covers both
+ordinary and cancellable HEAD hooks. The 72 integration tests compile `format!`,
+`matches!`, list/repeat `vec!`, custom macro early returns, cancellation and Drop
+behavior. Planning and staging cancellable HEAD hooks on the actual
+`Game::enter_guest` and `Mob::damage_with` methods also succeed against Horizon
+commit `3c9bb38e88f5b95ce42a139bc600d3e9c61a2175`; removing the generated statements
+reproduces each complete file after canonical formatting. This source audit
+does not claim a full-game compilation or gameplay run.

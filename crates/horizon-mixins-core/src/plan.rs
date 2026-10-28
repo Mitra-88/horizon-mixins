@@ -407,7 +407,7 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 }
             };
             let f = index.resolve(&injection.target).map_err(context)?;
-            validate_target(f, injection.kind, injection.cancellable).map_err(context)?;
+            validate_target(f, injection.kind).map_err(context)?;
             if injection.kind == Kind::Return
                 && !sites::is_unit(&helpers::return_type(&f.signature))
                 && !matches!(f.block.stmts.last(), Some(syn::Stmt::Expr(_, None)))
@@ -837,7 +837,7 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
     plan.validate_structure()?;
     Ok(plan)
 }
-pub(crate) fn validate_target(f: &Function, kind: Kind, cancellable: bool) -> Result<()> {
+pub(crate) fn validate_target(f: &Function, kind: Kind) -> Result<()> {
     let s = &f.signature;
     if s.ident.to_string().starts_with("__horizon_mixins_") {
         return Err(Diagnostic::new(
@@ -869,7 +869,9 @@ pub(crate) fn validate_target(f: &Function, kind: Kind, cancellable: bool) -> Re
     // Signature macros still require semantic resolution. Only preserved body
     // expression/statement invocations may remain opaque.
     safety.visit_signature(s);
-    safety.body_macros = safety.boundary && !cancellable;
+    // HEAD cancellation returns before the preserved body; it does not rewrite
+    // any exit or expression inside a macro, just like ordinary HEAD.
+    safety.body_macros = safety.boundary;
     safety.visit_block(&f.block);
     if let Some((code, why)) = safety.error {
         return Err(Diagnostic::new(code, why).file(&f.file));

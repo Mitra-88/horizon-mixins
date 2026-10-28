@@ -192,7 +192,7 @@ pub fn plan(
             ));
         }
         let f = index.resolve(&c.target)?;
-        plan::validate_target(f, Kind::ModifyExpressionValue, false)?;
+        plan::validate_target(f, Kind::ModifyExpressionValue)?;
         let selector: syn::Path = syn::parse_str(&c.selector).map_err(|e| fail(e.to_string()))?;
         if literal_owner(f, &selector).as_ref() != Some(&state.target) {
             return Err(fail(
