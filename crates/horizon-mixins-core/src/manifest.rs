@@ -42,6 +42,21 @@ pub struct Module {
     pub file: String,
     pub name: String,
     pub source: String,
+    #[serde(default)]
+    pub visibility: ModuleVisibility,
+}
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ModuleVisibility {
+    #[default]
+    #[serde(rename = "pub(crate)")]
+    Crate,
+    #[serde(rename = "pub")]
+    Public,
+}
+impl ModuleVisibility {
+    pub fn is_crate(&self) -> bool {
+        *self == Self::Crate
+    }
 }
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]

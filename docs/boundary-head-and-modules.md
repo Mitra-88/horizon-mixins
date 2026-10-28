@@ -66,6 +66,24 @@ source = "runtime.rs"
 outer module wrapper. The transformer emits `pub(crate) mod veinminer { ... }`
 after all edits to original functions and bridges. Its types/functions are
 available to helpers through ordinary Rust paths and same-crate privacy.
+An optional `visibility` accepts exactly `"pub(crate)"` (the default) or `"pub"`.
+For a support API used by a hook in another crate, declare it in a library:
+
+```toml
+[[module]]
+id = "runtime"
+file = "crates/horizon-mods/src/lib.rs"
+name = "my_runtime"
+source = "runtime.rs"
+visibility = "pub"
+```
+
+This emits `pub mod my_runtime { ... }`. A hook in a crate that already depends
+on `horizon-mods` can call `horizon_mods::my_runtime::helper()` if the payload
+declares `pub fn helper(...)`. Public module visibility does not make its items
+or parent modules public. Rust still checks item/type visibility and dependency
+direction; no reverse dependency or cycle is introduced automatically.
+
 It adds no Cargo dependencies or fields to existing structs. IDs are unique
 across injections, bridges and modules in a bundle.
 
@@ -77,7 +95,9 @@ multi-file mod implementations into a self-contained payload before planning.
 Ordinary Rust macros and cfg inside new implementation code are compiled by
 Cargo; injected helpers are never matched against that code.
 
-Plans contain module identity/version, destination fingerprint and source.
+Plans contain module identity/version, destination fingerprint and source, plus
+`visibility = "pub"` for public modules. Omitted plan visibility means
+`pub(crate)`, preserving existing schema-5 module records and generated output.
 Original fingerprints are checked before function rewrites; module insertion
 happens afterward so original node paths cannot shift. Changed support code
 changes the plan and staged file; repeated identical runs preserve bytes and

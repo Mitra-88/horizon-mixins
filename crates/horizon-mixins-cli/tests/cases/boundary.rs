@@ -114,6 +114,141 @@ fn head_preserves_lifetime_methods_closures_question_mark_and_drop() {
     assert_eq!(original, source::files(&f.root).unwrap());
 }
 #[test]
+fn support_module_explicit_crate_visibility_matches_the_default() {
+    let f = fixture();
+    let default = build_plan(&f.root, &f.mods).unwrap();
+    f.append(
+        "mods/alpha/horizon-mixin.toml",
+        "visibility = \"pub(crate)\"\n",
+    );
+    let explicit = build_plan(&f.root, &f.mods).unwrap();
+    assert_eq!(
+        default.modules[0].visibility,
+        horizon_mixins_core::manifest::ModuleVisibility::Crate
+    );
+    assert_eq!(
+        serde_json::to_value(&default.modules).unwrap(),
+        serde_json::to_value(&explicit.modules).unwrap()
+    );
+    assert_eq!(
+        horizon_mixins_transform::transform(&f.root, &default).unwrap(),
+        horizon_mixins_transform::transform(&f.root, &explicit).unwrap()
+    );
+    let roundtrip: horizon_mixins_core::Plan =
+        serde_json::from_value(serde_json::to_value(&default).unwrap()).unwrap();
+    assert_eq!(
+        roundtrip.modules[0].visibility,
+        default.modules[0].visibility
+    );
+    f.run("check");
+}
+#[test]
+fn public_support_module_is_callable_from_a_hook_in_a_dependent_crate() {
+    let f = Fixture::new();
+    fs::remove_dir_all(&f.mods).unwrap();
+    fs::create_dir_all(f.mods.join("alpha")).unwrap();
+    fs::write(
+        f.root.join("driver/src/lib.rs"),
+        r#"
+pub fn run(value: &mut i32) -> i32 { *value }
+#[cfg(test)] mod tests {
+    #[test] fn cross_crate_hook_calls_support_module() {
+        assert_eq!(super::run(&mut 40), 42);
+    }
+}
+"#,
+    )
+    .unwrap();
+    fs::write(
+        f.mods.join("alpha/horizon-mixin.toml"),
+        r#"
+[mod]
+id="alpha"
+version="1"
+[[injection]]
+id="head"
+kind="HEAD"
+target="fixture_driver::run"
+helper="head.rs"
+bindings=[{name="value",ty="&mut i32",value="&mut *value"}]
+[[module]]
+id="runtime"
+file="engine/src/lib.rs"
+name="support"
+source="runtime.rs"
+"#,
+    )
+    .unwrap();
+    fs::write(
+        f.mods.join("alpha/head.rs"),
+        "fn head(value: &mut i32) { fixture_game::support::touch(value); }",
+    )
+    .unwrap();
+    fs::write(
+        f.mods.join("alpha/runtime.rs"),
+        "pub fn touch(value: &mut i32) { *value += 2; }",
+    )
+    .unwrap();
+    let original = source::files(&f.root).unwrap();
+    let private = f.command("check").output().unwrap();
+    assert!(!private.status.success());
+    let error: serde_json::Value = serde_json::from_slice(&private.stderr).unwrap();
+    assert_eq!(error["code"], "E_BUILD");
+    assert!(
+        error["message"]
+            .as_str()
+            .unwrap()
+            .contains("module `support` is private")
+    );
+
+    f.append("mods/alpha/horizon-mixin.toml", "visibility = \"pub\"\n");
+    let plan = build_plan(&f.root, &f.mods).unwrap();
+    let serialized = serde_json::to_value(&plan).unwrap();
+    assert_eq!(serialized["modules"][0]["visibility"], "pub");
+    let roundtrip: horizon_mixins_core::Plan = serde_json::from_value(serialized).unwrap();
+    assert_eq!(
+        horizon_mixins_transform::transform(&f.root, &plan).unwrap(),
+        horizon_mixins_transform::transform(&f.root, &roundtrip).unwrap()
+    );
+    let report = f.run("check");
+    assert_eq!(report["stage_changed"], true);
+    assert!(
+        report["cargo_stdout"]
+            .as_str()
+            .unwrap()
+            .contains("cross_crate_hook_calls_support_module ... ok")
+    );
+    let staged = source::files(&f.out).unwrap();
+    let times = mtimes(&f.out);
+    assert_eq!(f.run("check")["stage_changed"], false);
+    assert_eq!(source::files(&f.out).unwrap(), staged);
+    assert_eq!(mtimes(&f.out), times);
+    assert_eq!(source::files(&f.root).unwrap(), original);
+}
+#[test]
+fn support_module_visibility_rejects_unknown_values() {
+    for visibility in [
+        "public",
+        "private",
+        "pub(super)",
+        "pub(in crate::runtime)",
+        "",
+    ] {
+        let f = fixture();
+        f.append(
+            "mods/alpha/horizon-mixin.toml",
+            &format!("visibility = {visibility:?}\n"),
+        );
+        let error = build_plan(&f.root, &f.mods).unwrap_err();
+        assert_eq!(error.code, "E_MANIFEST");
+        assert!(error.message.contains("pub(crate)"));
+        let f = fixture();
+        let mut plan = serde_json::to_value(build_plan(&f.root, &f.mods).unwrap()).unwrap();
+        plan["modules"][0]["visibility"] = visibility.into();
+        assert!(serde_json::from_value::<horizon_mixins_core::Plan>(plan).is_err());
+    }
+}
+#[test]
 fn cancellable_head_skips_original_lifetime_body_and_drops_inputs_once() {
     let f = fixture();
     fs::write(f.mods.join("alpha/head.rs"),"fn head(host:&mut Host<'_>)->core::ops::ControlFlow<Result<i32,&'static str>> {host.log.borrow_mut().push(\"alpha\");core::ops::ControlFlow::Break(Ok(9))}").unwrap();

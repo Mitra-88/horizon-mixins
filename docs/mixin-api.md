@@ -111,6 +111,9 @@ documents the remaining gaps.
 HEAD has a compilation-tested exception for preserved closure/`?` bodies and
 lifetime-bearing impls. Version 0.4.0 also adds `[[module]]` for shared same-crate
 implementation code. See [boundary contracts](boundary-head-and-modules.md).
+Support modules default to `pub(crate)`; `visibility = "pub"` exposes a module
+through ordinary Rust visibility to existing dependent crates. Payload items
+must also be public, and no Cargo dependencies are added.
 
 Version 0.5.0 adds `MODIFY_EXPRESSION_VALUE`, `AFTER_CALL`, `AFTER_ASSIGN`,
 `cancellable` interior hooks and `[[state]]` declarations. See

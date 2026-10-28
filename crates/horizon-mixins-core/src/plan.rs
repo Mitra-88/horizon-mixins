@@ -38,6 +38,8 @@ pub struct PlannedModule {
     pub module_id: String,
     pub file: String,
     pub name: String,
+    #[serde(default, skip_serializing_if = "manifest::ModuleVisibility::is_crate")]
+    pub visibility: manifest::ModuleVisibility,
     pub fingerprint: String,
     pub source: String,
 }
@@ -363,6 +365,7 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 module_id: module.id.clone(),
                 file: module.file.clone(),
                 name: module.name.clone(),
+                visibility: module.visibility,
                 fingerprint: source::fingerprint(tokens(tree)),
                 source: payload.clone(),
             });

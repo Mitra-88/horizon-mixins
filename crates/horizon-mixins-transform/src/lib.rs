@@ -322,13 +322,17 @@ pub fn transform(root: &Path, plan: &Plan) -> Result<BTreeMap<String, Vec<u8>>> 
     }
     for module in &plan.modules {
         let name: syn::Ident = syn::parse_str(&module.name).map_err(syntax)?;
+        let visibility = match module.visibility {
+            horizon_mixins_core::manifest::ModuleVisibility::Crate => quote!(pub(crate)),
+            horizon_mixins_core::manifest::ModuleVisibility::Public => quote!(pub),
+        };
         let payload = horizon_mixins_core::modules::validate_payload(&module.source)?;
         let items = payload.items;
         trees
             .get_mut(&module.file)
             .unwrap()
             .items
-            .push(syn::parse2(quote!(pub(crate) mod #name { #(#items)* })).map_err(syntax)?);
+            .push(syn::parse2(quote!(#visibility mod #name { #(#items)* })).map_err(syntax)?);
     }
     for (file, tree) in trees {
         files.insert(file, prettyplease::unparse(&tree).into_bytes());
