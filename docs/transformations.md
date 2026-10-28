@@ -49,6 +49,7 @@ Representative diagnostics:
 |---|---|
 | `E_TARGET_NOT_FOUND` | Exact source function is absent |
 | `E_TARGET_AMBIGUOUS` | Multiple definitions or shared source identities |
+| `E_UNSUPPORTED_MACRO_SITE` | A selector, variable or state constructor also occurs inside preserved standard macro inputs |
 | `E_MATCH_COUNT`, `E_ORDINAL` | Selector compatibility mismatch |
 | `E_OVERWRITE_CONFLICT` | Overwrite is not exclusive |
 | `E_UNSUPPORTED_MACRO`, `E_UNSUPPORTED_CFG` | Syntax cannot be resolved safely |

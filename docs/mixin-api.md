@@ -122,3 +122,8 @@ Version 0.5.0 adds `MODIFY_EXPRESSION_VALUE`, `AFTER_CALL`, `AFTER_ASSIGN`,
 [effects and state](effects-and-state.md) for explicit result contracts,
 post-assignment captures, constructor counts, initialization and serialization.
 CLI success reports now include `states` as well as injections/bridges/modules.
+
+Body-rewriting hooks can coexist with validated `format!`, `matches!` and `vec!`
+inputs. Macro invocations stay unchanged; hidden control flow, ambiguous macro
+identity and selectors matching macro internals are rejected. See
+[standard macro contracts](standard-macros.md).

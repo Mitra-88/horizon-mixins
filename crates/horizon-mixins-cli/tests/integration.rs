@@ -815,3 +815,6 @@ mod boundary;
 
 #[path = "cases/effects.rs"]
 mod effects;
+
+#[path = "cases/standard_macros.rs"]
+mod standard_macros;

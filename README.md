@@ -116,7 +116,7 @@ cargo test --workspace --locked
 python3 tools/benchmark.py # fresh target/benchmark; use --out for another run
 ```
 
-The 72-test integration suite includes generated source/plan snapshots, positive and
+The 80-test integration suite includes generated source/plan snapshots, positive and
 negative compilation, deterministic ordering, immutable originals, stale-source
 rejection, concurrent checks, and unchanged mtimes. Linux CI runs the same checks.
 
@@ -143,8 +143,8 @@ resolution, and a complete executable cache remain future work. License: [MIT](L
 Version 0.4.0 supports lifetime-bearing impl methods, HEAD over preserved
 closure/`?` bodies, and declarative same-crate support modules.
 HEAD-only hooks, including cancellable HEAD, also preserve body expression/statement
-macros such as `format!`, `matches!` and `vec!`; body-rewriting hooks retain their
-stricter macro restrictions. See
+macros such as `format!`, `matches!` and `vec!`; body-rewriting hooks also accept
+these three after [input and identity validation](docs/standard-macros.md). See
 [boundary HEAD and support modules](docs/boundary-head-and-modules.md).
 The separate [Veinminer port](https://github.com/levzzz5154/horizon-veinminer)
 uses three TOML HEAD hooks and one module on the pinned complete Horizon game.

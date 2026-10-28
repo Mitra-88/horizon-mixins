@@ -563,7 +563,7 @@ fn head_macro_exception_keeps_cfg_attributes_and_other_macro_contexts_restricted
 }
 
 #[test]
-fn head_with_macros_cannot_compose_with_return_or_interior_hooks() {
+fn head_with_opaque_macros_cannot_compose_with_return_or_interior_hooks() {
     for declaration in [
         "kind=\"RETURN\"",
         "kind=\"BEFORE_CALL\"\nselector=\"work\"\nrequire=1\nordinal=0",

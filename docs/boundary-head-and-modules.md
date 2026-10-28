@@ -62,9 +62,9 @@ Removing only the generated HEAD calls reproduces the original body AST;
 repeated staging preserves bytes and mtimes.
 
 This is preservation, not macro expansion: selectors cannot target calls or
-locals inside macro tokens. Body-rewriting hooks still reject even these common
-names, since their arguments can contain returns or other control flow and a
-local macro can shadow a standard macro. No name-based whitelist is used.
+locals inside macro tokens. Body-rewriting hooks now accept `format!`, `matches!`
+and `vec!` after validating their identity and inputs. Hidden exits or selector
+matches are still rejected; see [standard macro contracts](standard-macros.md).
 
 ## Support modules
 
