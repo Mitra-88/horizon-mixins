@@ -38,16 +38,26 @@ sites or exits. If a cancellable hook continues, the original body executes
 with its original returns, error propagation and destruction behavior. If it
 breaks, normal Rust return semantics drop the target's owned arguments once.
 
-Source macros, unresolved cfg and attribute macros still fail closed. Async
-functions remain rejected. RETURN and site injections continue to use their
-stricter control-flow validation, including when combined with HEAD. HEAD-only
-planning does not assign expression/local coordinates inside the untouched body;
+Noncancellable HEAD-only hooks also support opaque expression and statement
+macro invocations, such as `matches!`, `assert!` and macro-generated early
+returns. Their tokens remain untouched; no expansion or selection inside them
+is performed. Signature, type, pattern and item macros (including local
+`macro_rules!` definitions), unresolved cfg and attribute macros still fail
+closed. Attributes on macro invocations are checked as usual. Cancellable HEAD
+hooks retain the macro restriction. Async functions remain rejected. RETURN and
+site injections continue to use their stricter control-flow validation, including
+when combined with HEAD. HEAD-only planning does not assign expression/local
+coordinates inside the untouched body;
 the transform skips expression traversal when there are no planned sites.
 
 The compilation fixture tests two mods in priority order, closure errors,
 owned argument destruction, cancellation, stable lifetime IDs and deterministic
 source/mtimes. It also tests rejection of RETURN over `?`, type generics,
-source macros, ambiguous module destinations and unsupported payloads.
+unsupported macro contexts, ambiguous module destinations and unsupported
+payloads. Macro HEAD tests compile two ordered callbacks, expression/statement
+macros, macro-generated early returns and tail values, and local/argument drops.
+Removing only the generated HEAD calls reproduces the original body AST;
+repeated staging preserves bytes and mtimes.
 
 ## Support modules
 

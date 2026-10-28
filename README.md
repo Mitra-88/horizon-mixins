@@ -141,7 +141,9 @@ Additional injection kinds, broader structural mixins, launcher integration, sem
 resolution, and a complete executable cache remain future work. License: [MIT](LICENSE).
 
 Version 0.4.0 supports lifetime-bearing impl methods, HEAD over preserved
-closure/`?` bodies, and declarative same-crate support modules. See
+closure/`?` bodies, and declarative same-crate support modules. Noncancellable
+HEAD-only hooks also support preserved body expression/statement macros such as
+`matches!`; body-rewriting hooks retain their stricter macro restrictions. See
 [boundary HEAD and support modules](docs/boundary-head-and-modules.md).
 The separate [Veinminer port](https://github.com/levzzz5154/horizon-veinminer)
 uses three TOML HEAD hooks and one module on the pinned complete Horizon game.
