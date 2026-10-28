@@ -24,6 +24,12 @@ pub fn output_path(path: &Path) -> Result<PathBuf> {
                 );
             }
             Component::CurDir => continue,
+            // A drive prefix (`C:`, `\\?\C:`) names a volume, not a path to a file: Windows can't
+            // stat a verbatim one (ERROR_INVALID_FUNCTION), and a volume is never a link.
+            Component::Prefix(_) => {
+                output.push(component);
+                continue;
+            }
             _ => output.push(component),
         }
         match fs::symlink_metadata(&output) {
