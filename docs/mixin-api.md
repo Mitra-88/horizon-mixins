@@ -109,7 +109,8 @@ specifications and tests. The [SpongePowered feature map](spongepowered-feature-
 documents the remaining gaps.
 
 HEAD has a compilation-tested exception for preserved closure/`?` bodies and
-lifetime-bearing impls. Version 0.4.0 also adds `[[module]]` for shared same-crate
+lifetime-bearing impls. Noncancellable HEAD-only hooks additionally permit
+opaque expression and statement macros in the preserved body. Version 0.4.0 also adds `[[module]]` for shared same-crate
 implementation code. See [boundary contracts](boundary-head-and-modules.md).
 
 Version 0.5.0 adds `MODIFY_EXPRESSION_VALUE`, `AFTER_CALL`, `AFTER_ASSIGN`,

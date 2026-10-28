@@ -225,3 +225,189 @@ bindings=[{name="value",ty="Result<i32,&'static str>",value="$value"}]
         "E_UNSUPPORTED_CONTROL_FLOW"
     );
 }
+
+#[test]
+fn head_preserves_body_macros_early_returns_and_drop() {
+    let f = fixture();
+    f.replace(
+        "engine/src/boundary.rs",
+        "impl<'a> Host<'a> {",
+        r#"
+macro_rules! stop { () => { return Err("failure") }; }
+macro_rules! finish { ($value:expr) => { $value }; }
+struct Guard<'a>(&'a RefCell<Vec<&'static str>>);
+impl Drop for Guard<'_> {
+    fn drop(&mut self) { self.0.borrow_mut().push("local_drop"); }
+}
+impl<'a> Host<'a> {"#,
+    );
+    f.replace(
+        "engine/src/boundary.rs",
+        "let work = || if fail { Err(\"failure\") } else { Ok(3) };\n        let value = work()?;",
+        r#"let _guard = Guard(self.log);
+        assert!(std::matches!(fail, false | true));
+        if matches!(fail, true) { stop!(); }
+        let value = 3;"#,
+    );
+    f.replace("engine/src/boundary.rs", "Ok(value)", "finish!(Ok(value))");
+    f.replace(
+        "engine/src/boundary.rs",
+        "if fail {vec![\"alpha\",\"beta\"]} else {vec![\"alpha\",\"beta\",\"body\"]}",
+        "if fail {vec![\"alpha\",\"beta\",\"local_drop\"]} else {vec![\"alpha\",\"beta\",\"body\",\"local_drop\"]}",
+    );
+    let original = source::files(&f.root).unwrap();
+    let plan = build_plan(&f.root, &f.mods).unwrap();
+    let generated = horizon_mixins_transform::transform(&f.root, &plan).unwrap();
+    // Removing only the two HEAD calls must reproduce the original body,
+    // including every opaque macro token.
+    let file = "engine/src/boundary.rs";
+    fn run_body(text: &[u8]) -> syn::Block {
+        let tree = syn::parse_file(std::str::from_utf8(text).unwrap()).unwrap();
+        tree.items
+            .into_iter()
+            .find_map(|item| {
+                let syn::Item::Impl(item) = item else {
+                    return None;
+                };
+                item.items.into_iter().find_map(|item| match item {
+                    syn::ImplItem::Fn(f) if f.sig.ident == "run" => Some(f.block),
+                    _ => None,
+                })
+            })
+            .unwrap()
+    }
+    let mut body = run_body(&generated[file]);
+    body.stmts.drain(..2);
+    assert_eq!(
+        horizon_mixins_core::index::tokens(&body),
+        horizon_mixins_core::index::tokens(&run_body(&original[file])),
+    );
+    let report = f.run("check");
+    assert!(
+        report["cargo_stdout"]
+            .as_str()
+            .unwrap()
+            .contains("preserved_closure_errors_and_drop ... ok")
+    );
+    let times = mtimes(&f.out);
+    assert_eq!(f.run("check")["stage_changed"], false);
+    assert_eq!(times, mtimes(&f.out));
+    assert_eq!(original, source::files(&f.root).unwrap());
+}
+
+#[test]
+fn head_macro_exception_keeps_cfg_attributes_and_other_macro_contexts_restricted() {
+    for (from, to, code) in [
+        (
+            "pub fn run(",
+            "#[instrument]\npub fn run(",
+            "E_UNSUPPORTED_MACRO",
+        ),
+        (
+            "impl<'a> Host<'a>",
+            "#[instrument]\nimpl<'a> Host<'a>",
+            "E_UNSUPPORTED_MACRO",
+        ),
+        (
+            "let value = work()?;",
+            "#[cfg(any())] assert!(true); let value = work()?;",
+            "E_UNSUPPORTED_CFG",
+        ),
+        (
+            "let value = work()?;",
+            "#[cfg_attr(any(), allow(unused))] assert!(true); let value = work()?;",
+            "E_UNSUPPORTED_CFG",
+        ),
+        (
+            "let value = work()?;",
+            "#[instrument] assert!(true); let value = work()?;",
+            "E_UNSUPPORTED_MACRO",
+        ),
+        (
+            "let value = work()?;",
+            "let value = #[instrument] matches!(fail, true);",
+            "E_UNSUPPORTED_MACRO",
+        ),
+        (
+            "let value = work()?;",
+            "let value = #[cfg(any())] matches!(fail, true);",
+            "E_UNSUPPORTED_CFG",
+        ),
+        (
+            "let value = work()?;",
+            "let pattern!() = work()?;",
+            "E_UNSUPPORTED_MACRO",
+        ),
+        (
+            "fail: bool",
+            "fail: parameter_type!()",
+            "E_UNSUPPORTED_MACRO",
+        ),
+        (
+            "let value = work()?;",
+            "let value: body_type!() = work()?;",
+            "E_UNSUPPORTED_MACRO",
+        ),
+        (
+            "let value = work()?;",
+            "macro_rules! local { () => { 3 }; } let value = work()?;",
+            "E_UNSUPPORTED_MACRO",
+        ),
+    ] {
+        let f = fixture();
+        f.replace("engine/src/boundary.rs", from, to);
+        let error = build_plan(&f.root, &f.mods)
+            .err()
+            .unwrap_or_else(|| panic!("expected rejection of {to}"));
+        assert_eq!(error.code, code, "{to}");
+    }
+    let f = fixture();
+    f.replace(
+        "engine/src/boundary.rs",
+        "let value = work()?;",
+        "assert!(true); let value = work()?;",
+    );
+    f.replace(
+        "mods/alpha/horizon-mixin.toml",
+        "kind=\"HEAD\"",
+        "kind=\"HEAD\"\ncancellable=true",
+    );
+    assert_eq!(
+        build_plan(&f.root, &f.mods).unwrap_err().code,
+        "E_UNSUPPORTED_MACRO"
+    );
+}
+
+#[test]
+fn head_with_macros_cannot_compose_with_return_or_interior_hooks() {
+    for declaration in [
+        "kind=\"RETURN\"",
+        "kind=\"BEFORE_CALL\"\nselector=\"work\"\nrequire=1\nordinal=0",
+    ] {
+        let f = fixture();
+        // Keep the body otherwise inside the stricter subset, so the macro
+        // itself is what prevents body analysis, regardless of mod order.
+        f.replace(
+            "engine/src/boundary.rs",
+            "let work = || if fail { Err(\"failure\") } else { Ok(3) };\n        let value = work()?;",
+            "assert!(true); let value = 3;",
+        );
+        f.append(
+            "mods/beta/horizon-mixin.toml",
+            &format!(
+                r#"
+[[injection]]
+id="body"
+{declaration}
+target="fixture_game::boundary::Host<'_>::run"
+helper="head.rs"
+bindings=[{{name="host",ty="&mut Host<'_>",value="&mut *self"}}]
+"#
+            ),
+        );
+        assert_eq!(
+            build_plan(&f.root, &f.mods).unwrap_err().code,
+            "E_UNSUPPORTED_MACRO"
+        );
+    }
+}

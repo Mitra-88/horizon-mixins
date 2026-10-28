@@ -404,7 +404,7 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 }
             };
             let f = index.resolve(&injection.target).map_err(context)?;
-            validate_target(f, injection.kind).map_err(context)?;
+            validate_target(f, injection.kind, injection.cancellable).map_err(context)?;
             if injection.kind == Kind::Return
                 && !sites::is_unit(&helpers::return_type(&f.signature))
                 && !matches!(f.block.stmts.last(), Some(syn::Stmt::Expr(_, None)))
@@ -834,7 +834,7 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
     plan.validate_structure()?;
     Ok(plan)
 }
-pub(crate) fn validate_target(f: &Function, kind: Kind) -> Result<()> {
+pub(crate) fn validate_target(f: &Function, kind: Kind, cancellable: bool) -> Result<()> {
     let s = &f.signature;
     if s.ident.to_string().starts_with("__horizon_mixins_") {
         return Err(Diagnostic::new(
@@ -861,8 +861,12 @@ pub(crate) fn validate_target(f: &Function, kind: Kind) -> Result<()> {
     let mut safety = Safety {
         error: None,
         boundary: kind == Kind::Head,
+        body_macros: false,
     };
+    // Signature macros still require semantic resolution. Only preserved body
+    // expression/statement invocations may remain opaque.
     safety.visit_signature(s);
+    safety.body_macros = safety.boundary && !cancellable;
     safety.visit_block(&f.block);
     if let Some((code, why)) = safety.error {
         return Err(Diagnostic::new(code, why).file(&f.file));
@@ -873,8 +877,18 @@ pub(crate) fn validate_target(f: &Function, kind: Kind) -> Result<()> {
 struct Safety {
     error: Option<(&'static str, &'static str)>,
     boundary: bool,
+    body_macros: bool,
 }
 impl<'ast> Visit<'ast> for Safety {
+    fn visit_pat(&mut self, pat: &'ast syn::Pat) {
+        // syn represents pattern macros with ExprMacro too; they are not
+        // covered by the preserved expression/statement exception.
+        if let syn::Pat::Macro(mac) = pat {
+            visit::visit_expr_macro(self, mac);
+        } else {
+            visit::visit_pat(self, pat);
+        }
+    }
     fn visit_pat_ident(&mut self, pat: &'ast syn::PatIdent) {
         if pat.ident.to_string().starts_with("__horizon_mixins_") {
             self.error = Some((
@@ -919,6 +933,24 @@ impl<'ast> Visit<'ast> for Safety {
             _ => {}
         }
         visit::visit_expr(self, expr);
+    }
+    fn visit_expr_macro(&mut self, expr: &'ast syn::ExprMacro) {
+        if self.body_macros {
+            for attr in &expr.attrs {
+                self.visit_attribute(attr);
+            }
+        } else {
+            visit::visit_expr_macro(self, expr);
+        }
+    }
+    fn visit_stmt_macro(&mut self, stmt: &'ast syn::StmtMacro) {
+        if self.body_macros {
+            for attr in &stmt.attrs {
+                self.visit_attribute(attr);
+            }
+        } else {
+            visit::visit_stmt_macro(self, stmt);
+        }
     }
     fn visit_macro(&mut self, _: &'ast syn::Macro) {
         self.error = Some(("E_UNSUPPORTED_MACRO", "target contains an opaque macro"));

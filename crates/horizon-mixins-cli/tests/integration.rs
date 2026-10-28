@@ -339,9 +339,9 @@ fn negative_planning_diagnostics_are_actionable() {
             "E_UNSUPPORTED_CFG",
         ),
         (
-            "macro body",
-            "engine/src/entity.rs",
-            "entity.velocity += 1;",
+            "macro body with interior injection",
+            "engine/src/calls.rs",
+            "let first = consume(next(evaluations, log));",
             "unknown_macro!();",
             "E_UNSUPPORTED_MACRO",
         ),
