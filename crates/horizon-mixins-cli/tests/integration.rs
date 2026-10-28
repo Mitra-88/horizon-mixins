@@ -591,6 +591,21 @@ fn symlink_escapes_are_rejected() {
     assert_eq!(error["code"], "E_INVALID_PATH");
 }
 #[test]
+fn a_canonicalized_output_path_stages() {
+    // The Horizon launcher resolves links in its data folder with `canonicalize` (macOS's /tmp is
+    // one). On Windows that gives a verbatim path, `\\?\C:\...`, whose first component is the drive.
+    let mut f = Fixture::new();
+    f.out = f
+        .out
+        .parent()
+        .unwrap()
+        .canonicalize()
+        .unwrap()
+        .join("stage");
+    assert_eq!(f.run("apply")["status"], "ok");
+    assert!(f.out.join("engine/src/entity.rs").is_file());
+}
+#[test]
 fn concurrent_checks_are_serialized_and_keep_a_complete_stage() {
     let f = Fixture::new();
     let first = f
