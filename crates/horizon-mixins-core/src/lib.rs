@@ -13,4 +13,5 @@ pub use plan::{Plan, PlannedInjection, build_plan};
 
 pub mod modules;
 
+mod standard_macros;
 pub mod state;

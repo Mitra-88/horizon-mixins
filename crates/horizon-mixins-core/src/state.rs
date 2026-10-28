@@ -192,7 +192,20 @@ pub fn plan(
             ));
         }
         let f = index.resolve(&c.target)?;
-        plan::validate_target(f, Kind::ModifyExpressionValue)?;
+        let hidden = plan::validate_target(index, f, Kind::ModifyExpressionValue)?;
+        // Hidden struct construction cannot receive the generated state fields.
+        if hidden.iter().any(|expr| {
+            let block = syn::parse_quote!({ #expr });
+            Sites::in_block(&block).values.iter().any(|s| {
+                matches!(&s.expr,
+                Expr::Struct(e) if literal_owner(f, &e.path).as_ref() == Some(&state.target))
+            })
+        }) {
+            return Err(Diagnostic::new(
+                "E_UNSUPPORTED_MACRO_SITE",
+                "state constructor literal occurs inside preserved macro inputs",
+            ));
+        }
         let selector: syn::Path = syn::parse_str(&c.selector).map_err(|e| fail(e.to_string()))?;
         if literal_owner(f, &selector).as_ref() != Some(&state.target) {
             return Err(fail(

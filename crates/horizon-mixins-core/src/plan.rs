@@ -407,7 +407,9 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 }
             };
             let f = index.resolve(&injection.target).map_err(context)?;
-            validate_target(f, injection.kind).map_err(context)?;
+            let hidden = validate_target(&index, f, injection.kind).map_err(context)?;
+            crate::standard_macros::check_sites(&hidden, injection)
+                .map_err(|e| context(e.file(&f.file)))?;
             if injection.kind == Kind::Return
                 && !sites::is_unit(&helpers::return_type(&f.signature))
                 && !matches!(f.block.stmts.last(), Some(syn::Stmt::Expr(_, None)))
@@ -837,7 +839,7 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
     plan.validate_structure()?;
     Ok(plan)
 }
-pub(crate) fn validate_target(f: &Function, kind: Kind) -> Result<()> {
+pub(crate) fn validate_target(index: &Index, f: &Function, kind: Kind) -> Result<Vec<Expr>> {
     let s = &f.signature;
     if s.ident.to_string().starts_with("__horizon_mixins_") {
         return Err(Diagnostic::new(
@@ -865,6 +867,11 @@ pub(crate) fn validate_target(f: &Function, kind: Kind) -> Result<()> {
         error: None,
         boundary: kind == Kind::Head,
         body_macros: false,
+        in_body: false,
+        macro_depth: 0,
+        policy: crate::standard_macros::Policy::for_function(index, f),
+        macro_error: None,
+        hidden: Vec::new(),
     };
     // Signature macros still require semantic resolution. Only preserved body
     // expression/statement invocations may remain opaque.
@@ -872,24 +879,36 @@ pub(crate) fn validate_target(f: &Function, kind: Kind) -> Result<()> {
     // HEAD cancellation returns before the preserved body; it does not rewrite
     // any exit or expression inside a macro, just like ordinary HEAD.
     safety.body_macros = safety.boundary;
+    safety.in_body = true;
     safety.visit_block(&f.block);
     if let Some((code, why)) = safety.error {
         return Err(Diagnostic::new(code, why).file(&f.file));
     }
-    Ok(())
+    if let Some(error) = safety.macro_error {
+        return Err(error.file(&f.file));
+    }
+    Ok(safety.hidden)
 }
 
 struct Safety {
     error: Option<(&'static str, &'static str)>,
     boundary: bool,
     body_macros: bool,
+    in_body: bool,
+    macro_depth: usize,
+    policy: crate::standard_macros::Policy,
+    macro_error: Option<Diagnostic>,
+    hidden: Vec<Expr>,
 }
 impl<'ast> Visit<'ast> for Safety {
     fn visit_pat(&mut self, pat: &'ast syn::Pat) {
         // syn represents pattern macros with ExprMacro too; they are not
         // covered by the preserved expression/statement exception.
         if let syn::Pat::Macro(mac) = pat {
-            visit::visit_expr_macro(self, mac);
+            self.error = Some(("E_UNSUPPORTED_MACRO", "pattern macros are unsupported"));
+            for attr in &mac.attrs {
+                self.visit_attribute(attr);
+            }
         } else {
             visit::visit_pat(self, pat);
         }
@@ -908,13 +927,30 @@ impl<'ast> Visit<'ast> for Safety {
             visit::visit_expr(self, expr);
             return;
         }
+        if self.macro_depth > 0
+            && matches!(
+                expr,
+                Expr::Return(_)
+                    | Expr::Break(_)
+                    | Expr::Continue(_)
+                    | Expr::Try(_)
+                    | Expr::Closure(_)
+                    | Expr::Async(_)
+                    | Expr::Await(_)
+                    | Expr::TryBlock(_)
+                    | Expr::Yield(_)
+                    | Expr::Unsafe(_)
+                    | Expr::Const(_)
+                    | Expr::Verbatim(_)
+            )
+        {
+            self.error = Some((
+                "E_UNSUPPORTED_MACRO",
+                "macro inputs contain hidden control flow; move it outside the macro",
+            ));
+            return;
+        }
         match expr {
-            Expr::Macro(_) => {
-                self.error = Some((
-                    "E_UNSUPPORTED_MACRO",
-                    "opaque macros in target body are unsupported; expose ordinary Rust source",
-                ))
-            }
             Expr::Closure(_)
             | Expr::Async(_)
             | Expr::Await(_)
@@ -929,7 +965,7 @@ impl<'ast> Visit<'ast> for Safety {
                 ))
             }
             // Calls under a reference can depend on temporary lifetime extension.
-            Expr::Reference(r) if contains_call(&r.expr) => {
+            Expr::Reference(r) if self.macro_depth == 0 && contains_call(&r.expr) => {
                 self.error = Some((
                     "E_UNSUPPORTED_CONTROL_FLOW",
                     "calls beneath a reference may change temporary lifetimes",
@@ -957,8 +993,28 @@ impl<'ast> Visit<'ast> for Safety {
             visit::visit_stmt_macro(self, stmt);
         }
     }
-    fn visit_macro(&mut self, _: &'ast syn::Macro) {
-        self.error = Some(("E_UNSUPPORTED_MACRO", "target contains an opaque macro"));
+    fn visit_type_macro(&mut self, _: &'ast syn::TypeMacro) {
+        self.error = Some(("E_UNSUPPORTED_MACRO", "type macros are unsupported"));
+    }
+    fn visit_macro(&mut self, mac: &'ast syn::Macro) {
+        if !self.in_body {
+            self.error = Some(("E_UNSUPPORTED_MACRO", "signature macros are unsupported"));
+            return;
+        }
+        match self.policy.parse(mac) {
+            Ok(args) => {
+                self.macro_depth += 1;
+                if let Some(pat) = &args.pattern {
+                    self.visit_pat(pat);
+                }
+                for arg in &args.expressions {
+                    self.visit_expr(arg);
+                }
+                self.macro_depth -= 1;
+                self.hidden.extend(args.expressions);
+            }
+            Err(error) => self.macro_error = Some(error),
+        }
     }
     fn visit_item(&mut self, item: &'ast Item) {
         if self.boundary {

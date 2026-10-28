@@ -23,6 +23,7 @@ pub struct Function {
 }
 #[derive(Debug)]
 pub struct Index {
+    pub(crate) standard_macro_aliases: BTreeMap<String, BTreeSet<String>>,
     pub functions: Vec<Function>,
     pub types: Vec<TypeDefinition>,
     pub blocked: BTreeSet<String>,
@@ -120,6 +121,7 @@ impl Index {
             }
         }
         let mut index = Self {
+            standard_macro_aliases: BTreeMap::new(),
             functions: Vec::new(),
             types: Vec::new(),
             blocked: BTreeSet::new(),
@@ -147,6 +149,15 @@ impl Index {
                 }
                 let path = target.src_path.as_std_path();
                 let prefix = target.name.replace('-', "_");
+                let aliases = package
+                    .dependencies
+                    .iter()
+                    .filter_map(|d| {
+                        let alias = d.rename.as_ref().unwrap_or(&d.name).replace('-', "_");
+                        matches!(alias.as_str(), "std" | "core" | "alloc").then_some(alias)
+                    })
+                    .collect();
+                index.standard_macro_aliases.insert(prefix.clone(), aliases);
                 if !target.required_features.is_empty() {
                     index.blocked.insert(prefix);
                     continue;
