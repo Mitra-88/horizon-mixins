@@ -67,22 +67,34 @@ outer module wrapper. The transformer emits `pub(crate) mod veinminer { ... }`
 after all edits to original functions and bridges. Its types/functions are
 available to helpers through ordinary Rust paths and same-crate privacy.
 An optional `visibility` accepts exactly `"pub(crate)"` (the default) or `"pub"`.
-For a support API used by a hook in another crate, declare it in a library:
+For a support API used by a hook in another crate, declare it in a library file
+without top-level glob imports. This example uses the two-crate test workspace
+in `fixtures/game`, where `fixture-driver` already depends on `fixture-game`:
 
 ```toml
 [[module]]
 id = "runtime"
-file = "crates/horizon-mods/src/lib.rs"
-name = "my_runtime"
+file = "engine/src/lib.rs"
+name = "support"
 source = "runtime.rs"
 visibility = "pub"
 ```
 
-This emits `pub mod my_runtime { ... }`. A hook in a crate that already depends
-on `horizon-mods` can call `horizon_mods::my_runtime::helper()` if the payload
-declares `pub fn helper(...)`. Public module visibility does not make its items
-or parent modules public. Rust still checks item/type visibility and dependency
-direction; no reverse dependency or cycle is introduced automatically.
+With `runtime.rs` containing `pub fn touch(value: &mut i32) { *value += 2; }`,
+this emits `pub mod support { ... }`. A hook in `fixture-driver` can call
+`fixture_game::support::touch(value)`. The
+[`public_support_module_is_callable_from_a_hook_in_a_dependent_crate` test](../crates/horizon-mixins-cli/tests/cases/boundary.rs)
+compiles and exercises this arrangement. Public module visibility does not make
+its items or parent modules public. Rust still checks item/type visibility and
+dependency direction; no reverse dependency or cycle is introduced automatically.
+
+The planner conservatively rejects any top-level glob import in a destination
+file with `E_MODULE_CONFLICT`, because it cannot prove which names the glob
+introduces. This includes cfg-gated imports: Horizon's
+`crates/horizon-mods/src/lib.rs` contains `pub use runtime::*;`, so that file
+cannot currently receive a support module, even with `visibility = "pub"`.
+Choose an indexed destination without glob imports whose parent modules are
+public when cross-crate access is needed.
 
 It adds no Cargo dependencies or fields to existing structs. IDs are unique
 across injections, bridges and modules in a bundle.
