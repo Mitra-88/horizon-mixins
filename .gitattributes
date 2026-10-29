@@ -1,0 +1,4 @@
+# Check out text files with LF on every platform: the snapshot tests compare
+# generated output byte for byte against committed fixtures and snapshots,
+# which fail under core.autocrlf=true (Git for Windows' default) with CRLF.
+* text=auto eol=lf
