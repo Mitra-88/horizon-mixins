@@ -49,3 +49,8 @@ Expression, after-hook and state changes use the same atomic stage, unchanged
 mtime preservation and Cargo target lock. Constructor source, explicit state
 initializers and helper sources participate in the canonical plan/stage identity.
 No runtime injection or save-data migration is performed by staging.
+
+Bundle crates, `data/` files and `native-post-build.json` (0.6.0) are part of the same complete
+stage. Their file fingerprints are in the plan and the stage marker, and unchanged ones are
+hard-linked with their mtimes kept. A bundle crate is its own Cargo package, so Cargo reuses its
+build while only helpers or other mods change. See [crates, data and named hooks](crates-data-and-named-hooks.md).

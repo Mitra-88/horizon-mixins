@@ -37,3 +37,9 @@ are explicit and fingerprinted. State/serialization code has the same native
 privileges as helpers. Serde defaults support old records, but custom game save
 systems and schema migrations require explicit integration; see
 [effects and state](effects-and-state.md).
+
+Bundle crates (0.6.0) are native code with the same privileges, including their build scripts.
+They may only use registry packages already pinned in the workspace's `Cargo.lock`, with no path,
+git or workspace dependencies, and no `[workspace]`, `[patch]`, `[replace]` or `[target]` tables.
+Their target paths must stay inside the crate. `[[post_build]]` steps are recorded, never executed,
+by horizon-mixins; the launcher that runs them has to trust them as it trusts the mod.

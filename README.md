@@ -116,7 +116,7 @@ cargo test --workspace --locked
 python3 tools/benchmark.py # fresh target/benchmark; use --out for another run
 ```
 
-The 80-test integration suite includes generated source/plan snapshots, positive and
+The 89-test integration suite includes generated source/plan snapshots, positive and
 negative compilation, deterministic ordering, immutable originals, stale-source
 rejection, concurrent checks, and unchanged mtimes. Linux CI runs the same checks.
 
@@ -159,4 +159,17 @@ cargo fetch --locked --manifest-path fixtures/effects/Cargo.toml
 cargo run --locked -p horizon-mixins-cli -- check \
   --workspace fixtures/effects --mods fixtures/effects-mods \
   --out target/effects-game --trust-native-mods
+```
+
+Version 0.6.0 adds what larger native mods need: a named `hook` + `hook_version` from the
+workspace's `native-hooks.json` instead of a raw target, the bundle's own crates (`[[crate]]`,
+staged as workspace members with registry dependencies taken only from the existing `Cargo.lock`),
+`data/` files staged to `native-data/<mod-id>/`, and `[[post_build]]` steps written to
+`native-post-build.json` for the launcher (the tool never runs them). Plans use schema 6. See
+[named hooks, bundle crates, data and post-build steps](docs/crates-data-and-named-hooks.md).
+
+```sh
+cargo run --locked -p horizon-mixins-cli -- check \
+  --workspace fixtures/native --mods fixtures/native-mods \
+  --out target/native-game --trust-native-mods
 ```

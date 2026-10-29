@@ -818,3 +818,6 @@ mod effects;
 
 #[path = "cases/standard_macros.rs"]
 mod standard_macros;
+
+#[path = "cases/native.rs"]
+mod native;
