@@ -278,6 +278,6 @@
       "target": "fixture_game::overwrite::value"
     }
   ],
-  "schema": 5,
-  "transformer": "0.5.0"
+  "schema": 6,
+  "transformer": "0.6.0"
 }

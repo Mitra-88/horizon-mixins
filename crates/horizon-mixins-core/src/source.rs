@@ -36,15 +36,27 @@ pub fn contained(root: &Path, path: &Path) -> Result<PathBuf> {
 }
 /// Snapshot all staged inputs. Exclude build outputs, VCS and local player/assets data.
 pub fn files(root: &Path) -> Result<BTreeMap<String, Vec<u8>>> {
-    fn walk(root: &Path, dir: &Path, out: &mut BTreeMap<String, Vec<u8>>) -> Result<()> {
+    tree(root, true)
+}
+/// Every regular file under `root`, keyed by `/`-separated relative path. Symlinks and special
+/// files fail. `skip_build` leaves out build outputs, VCS and local data folders by name.
+pub fn tree(root: &Path, skip_build: bool) -> Result<BTreeMap<String, Vec<u8>>> {
+    fn walk(
+        root: &Path,
+        dir: &Path,
+        skip_build: bool,
+        out: &mut BTreeMap<String, Vec<u8>>,
+    ) -> Result<()> {
         for entry in fs::read_dir(dir).map_err(io)? {
             let entry = entry.map_err(io)?;
             let path = entry.path();
             let name = entry.file_name();
-            if matches!(
-                name.to_str(),
-                Some("target" | ".git" | ".local" | ".horizon-mixins" | "node_modules")
-            ) {
+            if skip_build
+                && matches!(
+                    name.to_str(),
+                    Some("target" | ".git" | ".local" | ".horizon-mixins" | "node_modules")
+                )
+            {
                 continue;
             }
             let ty = entry.file_type().map_err(io)?;
@@ -56,7 +68,7 @@ pub fn files(root: &Path) -> Result<BTreeMap<String, Vec<u8>>> {
                 .file(&path));
             }
             if ty.is_dir() {
-                walk(root, &path, out)?;
+                walk(root, &path, skip_build, out)?;
             } else if ty.is_file() {
                 let key = path
                     .strip_prefix(root)
@@ -74,6 +86,6 @@ pub fn files(root: &Path) -> Result<BTreeMap<String, Vec<u8>>> {
         Ok(())
     }
     let mut out = BTreeMap::new();
-    walk(root, root, &mut out)?;
+    walk(root, root, skip_build, &mut out)?;
     Ok(out)
 }

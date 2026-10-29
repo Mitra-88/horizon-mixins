@@ -526,7 +526,7 @@
     }
   ],
   "rustc": "<pinned toolchain>",
-  "schema": 5,
+  "schema": 6,
   "states": [
     {
       "constructors": [
@@ -611,5 +611,5 @@
       "ty": "usize"
     }
   ],
-  "transformer": "0.5.0"
+  "transformer": "0.6.0"
 }

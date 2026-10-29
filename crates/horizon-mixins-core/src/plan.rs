@@ -29,7 +29,15 @@ pub struct Plan {
     pub modules: Vec<PlannedModule>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub states: Vec<crate::state::PlannedState>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub crates: Vec<crate::native::PlannedCrate>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub data: Vec<crate::native::PlannedData>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub post_build: Vec<crate::native::PlannedPostBuild>,
 }
+/// The current plan schema: 6 adds named hooks, bundle crates, data and post-build steps.
+pub const SCHEMA: u32 = 6;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlannedModule {
@@ -51,6 +59,11 @@ pub struct PlannedInjection {
     pub injection_id: String,
     pub priority: i32,
     pub target: String,
+    /// The catalog hook the target was resolved from, when the manifest named one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hook: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hook_version: Option<u32>,
     pub file: String,
     pub node: Vec<usize>,
     pub function_fingerprint: String,
@@ -101,9 +114,43 @@ impl Plan {
                 ));
             }
         }
+        for c in &self.crates {
+            source::relative(Path::new(&c.path))?;
+            source::relative(Path::new(&c.dependent_manifest))?;
+            if !c.path.starts_with(&format!("{}/", crate::native::CRATES))
+                || !c.files.contains_key("Cargo.toml")
+            {
+                return Err(Diagnostic::new("E_PLAN_SITE", "invalid planned crate"));
+            }
+            for name in c.files.keys() {
+                source::relative(Path::new(name))?;
+            }
+        }
+        for d in &self.data {
+            for name in d.files.keys() {
+                source::relative(Path::new(name))?;
+            }
+        }
+        if self.post_build.iter().any(|p| {
+            !self
+                .crates
+                .iter()
+                .any(|c| c.mod_id == p.mod_id && c.crate_id == p.crate_id && c.package == p.package)
+        }) {
+            return Err(Diagnostic::new(
+                "E_PLAN_SITE",
+                "post-build step names no planned crate",
+            ));
+        }
         let mut ids = std::collections::BTreeSet::new();
         for p in &self.injections {
             source::relative(Path::new(&p.file))?;
+            if p.hook.is_some() != p.hook_version.is_some() {
+                return Err(Diagnostic::new(
+                    "E_PLAN_SITE",
+                    "hook and hook_version go together",
+                ));
+            }
             let call_fields_valid = if p.kind.selects_site() {
                 (if p.kind == Kind::ModifyConstant {
                     p.constant_site.is_some() && p.call_site.is_none() && p.variable_site.is_none()
@@ -261,13 +308,19 @@ pub fn rustc(root: &Path) -> Result<String> {
     Ok(String::from_utf8_lossy(&out.stdout).trim().into())
 }
 pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
+    build_staged(workspace, mods).map(|(plan, _)| plan)
+}
+/// The plan plus the bundle crate and data files it stages (see [`crate::native::stage`]).
+pub fn build_staged(workspace: &Path, mods: &Path) -> Result<(Plan, crate::native::Extras)> {
     let root = workspace.canonicalize().map_err(io)?;
-    let mods = manifest::load(mods)?;
-    let inputs = source::files(&root)?
+    let mut mods = manifest::load(mods)?;
+    let inputs: BTreeMap<String, String> = source::files(&root)?
         .into_iter()
         .map(|(name, bytes)| (name, source::fingerprint(bytes)))
         .collect();
+    crate::native::resolve_hooks(&root, &mut mods)?;
     let index = Index::load(&root)?;
+    let native = crate::native::plan(&root, &index.packages, &inputs, &mods)?;
     let mut injections = Vec::new();
     let mut planned_bridges = Vec::new();
     let mut planned_states = Vec::new();
@@ -705,6 +758,8 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
                 injection_id: injection.id.clone(),
                 priority: injection.priority.unwrap_or(bundle.manifest.info.priority),
                 target: f.id.clone(),
+                hook: injection.hook.clone(),
+                hook_version: injection.hook_version,
                 file: f.file.clone(),
                 node: f.node.clone(),
                 function_fingerprint,
@@ -827,7 +882,7 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
         ));
     }
     let plan = Plan {
-        schema: 5,
+        schema: SCHEMA,
         transformer: env!("CARGO_PKG_VERSION").into(),
         rustc: rustc(&root)?,
         inputs,
@@ -835,9 +890,12 @@ pub fn build_plan(workspace: &Path, mods: &Path) -> Result<Plan> {
         bridges: planned_bridges,
         modules: planned_modules,
         states: planned_states,
+        crates: native.crates,
+        data: native.data,
+        post_build: native.post_build,
     };
     plan.validate_structure()?;
-    Ok(plan)
+    Ok((plan, native.extras))
 }
 pub(crate) fn validate_target(index: &Index, f: &Function, kind: Kind) -> Result<Vec<Expr>> {
     let s = &f.signature;

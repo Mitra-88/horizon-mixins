@@ -1,6 +1,10 @@
 use crate::{Diagnostic, Result, diagnostic::io, source};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, fs, path::Path};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -17,6 +21,34 @@ pub struct Manifest {
     pub module: Vec<Module>,
     #[serde(default)]
     pub state: Vec<State>,
+    #[serde(default, rename = "crate")]
+    pub crates: Vec<Crate>,
+    #[serde(default)]
+    pub post_build: Vec<PostBuild>,
+}
+/// A bundle's own Cargo package, staged as a workspace member (0.6.0).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Crate {
+    pub id: String,
+    pub path: String,
+    pub dependent: Option<String>,
+}
+impl Crate {
+    pub const DEFAULT_DEPENDENT: &str = "horizon-client";
+    pub fn dependent(&self) -> &str {
+        self.dependent.as_deref().unwrap_or(Self::DEFAULT_DEPENDENT)
+    }
+}
+/// A bin of one of the mod's crates that the launcher runs after the game builds.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PostBuild {
+    #[serde(rename = "crate")]
+    pub crate_id: String,
+    pub bin: String,
+    #[serde(default)]
+    pub args: Vec<String>,
 }
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -111,7 +143,12 @@ impl Kind {
 #[serde(deny_unknown_fields)]
 pub struct Injection {
     pub id: String,
+    /// Raw target path. Empty when the injection names a catalog `hook` instead; planning
+    /// replaces it with the catalog's target before anything else reads it.
+    #[serde(default)]
     pub target: String,
+    pub hook: Option<String>,
+    pub hook_version: Option<u32>,
     pub kind: Kind,
     pub helper: String,
     #[serde(default)]
@@ -186,8 +223,14 @@ pub struct LoadedMod {
     pub file: String,
     pub helpers: Vec<String>,
     pub modules: Vec<String>,
+    /// The bundle directory (`None` for a direct `.toml` mod in the mods root).
+    pub dir: Option<PathBuf>,
+    /// Each `[[crate]]`'s files, relative to its folder.
+    pub crates: Vec<BTreeMap<String, Vec<u8>>>,
+    /// The bundle's `data/` files, relative to `data/`.
+    pub data: BTreeMap<String, Vec<u8>>,
 }
-fn valid_id(value: &str) -> bool {
+pub(crate) fn valid_id(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 100
         && value
@@ -234,14 +277,18 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
             || (manifest.injection.is_empty()
                 && manifest.bridge.is_empty()
                 && manifest.module.is_empty()
-                && manifest.state.is_empty())
+                && manifest.state.is_empty()
+                && manifest.crates.is_empty())
         {
             return Err(fail(
                 "E_MANIFEST",
-                "mod needs an ASCII id, a version and at least one injection, bridge, module or state"
+                "mod needs an ASCII id, a version and at least one injection, bridge, module, state or crate"
                     .into(),
             ));
         }
+        let bundle = path.parent().unwrap();
+        let dir = (path.file_name().is_some_and(|n| n == "horizon-mixin.toml") && bundle != root)
+            .then(|| bundle.to_path_buf());
         if !ids.insert(manifest.info.id.clone()) {
             return Err(fail(
                 "E_DUPLICATE_ID",
@@ -290,6 +337,34 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
                     "E_DUPLICATE_ID",
                     format!("invalid or duplicate injection id '{}'", injection.id),
                 )));
+            }
+            match (&injection.hook, injection.hook_version) {
+                (None, None) if !injection.target.is_empty() => {}
+                (Some(hook), Some(_)) if injection.target.is_empty() && !hook.is_empty() => {}
+                (None, None) => {
+                    return Err(context(fail(
+                        "E_MANIFEST",
+                        "an injection needs a target or a named hook".into(),
+                    )));
+                }
+                (Some(_), _) if !injection.target.is_empty() => {
+                    return Err(context(fail(
+                        "E_MANIFEST",
+                        "use either target or hook, not both".into(),
+                    )));
+                }
+                (Some(_), None) => {
+                    return Err(context(fail(
+                        "E_MANIFEST",
+                        "hook requires hook_version".into(),
+                    )));
+                }
+                _ => {
+                    return Err(context(fail(
+                        "E_MANIFEST",
+                        "hook_version requires a nonempty hook".into(),
+                    )));
+                }
             }
             if injection.cancellable
                 && !matches!(
@@ -356,13 +431,101 @@ pub fn load(root: &Path) -> Result<Vec<LoadedMod>> {
             let helper = fs::read_to_string(&helper_path).map_err(|e| context(io(e)))?;
             helpers.push(helper);
         }
+        let mut crates = Vec::new();
+        let mut crate_ids = BTreeSet::new();
+        for spec in &manifest.crates {
+            let context = |e: Diagnostic| {
+                let mut e = e.file(&path);
+                e.mod_id = Some(manifest.info.id.clone().into());
+                e.injection_id = Some(spec.id.clone().into());
+                e
+            };
+            if !valid_id(&spec.id) || !injections.insert(&spec.id) {
+                return Err(context(Diagnostic::new(
+                    "E_DUPLICATE_ID",
+                    format!("invalid or duplicate crate id '{}'", spec.id),
+                )));
+            }
+            crate_ids.insert(spec.id.as_str());
+            let Some(dir) = &dir else {
+                return Err(context(Diagnostic::new(
+                    "E_CRATE",
+                    "[[crate]] needs a bundle directory with horizon-mixin.toml",
+                )));
+            };
+            source::relative(Path::new(&spec.path)).map_err(context)?;
+            if Path::new(&spec.path).starts_with("data") {
+                return Err(context(Diagnostic::new(
+                    "E_CRATE",
+                    "a crate folder cannot be (or be inside) the bundle's data/ folder",
+                )));
+            }
+            if fs::symlink_metadata(dir.join(&spec.path)).is_ok_and(|m| m.is_symlink()) {
+                return Err(context(
+                    Diagnostic::new("E_INVALID_PATH", "crate folders cannot be symlinks")
+                        .file(dir.join(&spec.path)),
+                ));
+            }
+            let folder = source::contained(dir, Path::new(&spec.path)).map_err(context)?;
+            if !folder.is_dir() || !folder.join("Cargo.toml").is_file() {
+                return Err(context(Diagnostic::new(
+                    "E_CRATE",
+                    format!("crate '{}' must be a folder holding Cargo.toml", spec.id),
+                )));
+            }
+            crates.push(source::tree(&folder, true).map_err(context)?);
+        }
+        for post in &manifest.post_build {
+            if !crate_ids.contains(post.crate_id.as_str()) {
+                return Err(fail(
+                    "E_POST_BUILD",
+                    format!(
+                        "post_build crate '{}' is not a [[crate]] of mod '{}'",
+                        post.crate_id, manifest.info.id
+                    ),
+                ));
+            }
+            if !valid_bin(&post.bin) {
+                return Err(fail(
+                    "E_POST_BUILD",
+                    format!("post_build bin '{}' is not a valid bin name", post.bin),
+                ));
+            }
+        }
+        let mut data = BTreeMap::new();
+        if let Some(dir) = &dir {
+            let folder = dir.join("data");
+            match fs::symlink_metadata(&folder) {
+                Ok(meta) if meta.is_dir() => data = source::tree(&folder, false)?,
+                Ok(_) => {
+                    return Err(Diagnostic::new(
+                        "E_INVALID_PATH",
+                        "a bundle's data must be a plain folder, not a file or symlink",
+                    )
+                    .file(folder));
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => return Err(io(e).file(folder)),
+            }
+        }
         mods.push(LoadedMod {
             manifest,
             helpers,
             modules,
             file: path.display().to_string(),
+            dir,
+            crates,
+            data,
         });
     }
     mods.sort_by(|a, b| a.manifest.info.id.cmp(&b.manifest.info.id));
     Ok(mods)
+}
+/// Cargo target names: an ASCII letter or `_`, then letters, digits, `_` or `-`.
+pub(crate) fn valid_bin(value: &str) -> bool {
+    valid_id(value)
+        && value
+            .bytes()
+            .next()
+            .is_some_and(|b| b.is_ascii_alphabetic() || b == b'_')
 }

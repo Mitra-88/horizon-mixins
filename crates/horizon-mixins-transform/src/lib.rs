@@ -13,7 +13,7 @@ use syn::{
 
 /// Rewrite pristine expression coordinates once. Generated code is never matched.
 pub fn transform(root: &Path, plan: &Plan) -> Result<BTreeMap<String, Vec<u8>>> {
-    if plan.schema != 5 || plan.transformer != env!("CARGO_PKG_VERSION") {
+    if plan.schema != plan::SCHEMA || plan.transformer != env!("CARGO_PKG_VERSION") {
         return Err(Diagnostic::new(
             "E_PLAN_VERSION",
             "unsupported plan schema/transformer",

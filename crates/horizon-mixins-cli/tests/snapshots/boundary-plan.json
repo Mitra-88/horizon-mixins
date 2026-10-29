@@ -1,7 +1,7 @@
 {
-  "schema": 5,
-  "transformer": "0.5.0",
-  "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+  "schema": 6,
+  "transformer": "0.6.0",
+  "rustc": "<pinned toolchain>",
   "inputs": {
     "Cargo.lock": "40777af0bd0e981e825291ef434d33605137cbd48dc6a3b105f7a4ee32d6ed5d",
     "Cargo.toml": "660f90cea2b8071387d62b12a3fce0dbb6e15860c4e591bb9f082699e3089dc8",
