@@ -83,3 +83,8 @@ State literal fields are inserted after original child traversal, with owner
 fields/getters/initializer functions appended after all body changes. This keeps
 all original function/expression indices stable. Struct updates move existing
 state through their rest expression. See [effects and state](effects-and-state.md).
+
+`horizon-mixins-core::native` (0.6.0) resolves named hooks from `native-hooks.json` before
+indexing, and validates bundle crates, data and post-build steps against the workspace's members
+and `Cargo.lock`. After the transform, `native::stage` adds the bundle files to the staged set and
+edits the root manifest, the dependents' manifests and `Cargo.lock` in place.

@@ -30,6 +30,8 @@ pub struct Index {
     pub macro_modules: BTreeSet<String>,
     pub files: BTreeMap<String, syn::File>,
     pub source_owners: BTreeMap<String, BTreeSet<String>>,
+    /// Workspace member package name → its manifest, relative to the workspace root.
+    pub packages: BTreeMap<String, String>,
 }
 #[derive(Debug, Clone)]
 pub struct TypeDefinition {
@@ -128,11 +130,26 @@ impl Index {
             macro_modules: BTreeSet::new(),
             files: BTreeMap::new(),
             source_owners: BTreeMap::new(),
+            packages: BTreeMap::new(),
         };
         for package in &metadata.packages {
             if !metadata.workspace_members.contains(&package.id) {
                 continue;
             }
+            let manifest = package
+                .manifest_path
+                .as_std_path()
+                .canonicalize()
+                .map_err(io)?;
+            let manifest = manifest
+                .strip_prefix(root)
+                .map_err(|_| {
+                    Diagnostic::new("E_INVALID_PATH", "workspace member outside the workspace")
+                })?
+                .to_str()
+                .ok_or_else(|| Diagnostic::new("E_INVALID_PATH", "non UTF-8 manifest path"))?
+                .replace('\\', "/");
+            index.packages.insert(package.name.to_string(), manifest);
             for target in &package.targets {
                 if !target.kind.iter().any(|k| {
                     matches!(

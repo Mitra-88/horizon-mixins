@@ -1,0 +1,14 @@
+{
+  "hooks": [
+    {
+      "name": "tick",
+      "version": 1,
+      "target": "native_game::hooks::Game::native_tick"
+    },
+    {
+      "name": "frame",
+      "version": 1,
+      "target": "native_game::hooks::Game::native_frame"
+    }
+  ]
+}

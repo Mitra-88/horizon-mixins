@@ -1,6 +1,6 @@
 mod staging;
 use clap::{Args, Parser, Subcommand};
-use horizon_mixins_core::{Diagnostic, Result, build_plan, diagnostic::io};
+use horizon_mixins_core::{Diagnostic, Result, build_plan, build_staged, diagnostic::io, native};
 use serde_json::json;
 use std::{
     path::{Path, PathBuf},
@@ -74,7 +74,7 @@ fn run(cli: Cli) -> Result<serde_json::Value> {
             let _lock = staging::lock(&out, "plan")?;
             staging::write_atomic(&out, &bytes)?;
             return Ok(
-                json!({"status":"ok", "plan":out, "injections":plan.injections.len(), "bridges":plan.bridges.len(), "modules":plan.modules.len(), "states":plan.states.len(), "seconds":start.elapsed().as_secs_f64()}),
+                json!({"status":"ok", "plan":out, "injections":plan.injections.len(), "bridges":plan.bridges.len(), "modules":plan.modules.len(), "states":plan.states.len(), "crates":plan.crates.len(), "data":plan.data.len(), "post_build":plan.post_build.len(), "seconds":start.elapsed().as_secs_f64()}),
             );
         }
         Action::Apply(common) => (common, None),
@@ -116,11 +116,13 @@ fn run(cli: Cli) -> Result<serde_json::Value> {
         protect(&out, target)?;
     }
     let _stage_lock = staging::lock(&out, "stage")?;
-    let plan = build_plan(&root, &mods)?;
-    let files = horizon_mixins_transform::transform(&root, &plan)?;
+    let (plan, extras) = build_staged(&root, &mods)?;
+    let mut files = horizon_mixins_transform::transform(&root, &plan)?;
+    native::stage(&plan, &mut files, extras)?;
     let stage_changed = staging::publish(&root, &out, files, &plan)?;
     let transformation_seconds = start.elapsed().as_secs_f64();
     let mut result = json!({"status":"ok", "stage":out, "injections":plan.injections.len(), "bridges":plan.bridges.len(), "modules":plan.modules.len(), "states":plan.states.len(),
+        "crates":plan.crates.len(), "data":plan.data.len(), "post_build":plan.post_build.len(),
         "stage_changed":stage_changed, "transformation_seconds":transformation_seconds});
     if let Some((_, packages)) = check {
         let target = target.unwrap();

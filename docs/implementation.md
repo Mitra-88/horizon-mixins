@@ -192,3 +192,13 @@ behavior. Planning and staging cancellable HEAD hooks on the actual
 commit `3c9bb38e88f5b95ce42a139bc600d3e9c61a2175`; removing the generated statements
 reproduces each complete file after canonical formatting. This source audit
 does not claim a full-game compilation or gameplay run.
+
+Version 0.6.0 implements [named hooks, bundle crates, data and post-build steps](crates-data-and-named-hooks.md).
+The `fixtures/native` workspace has a two-hook catalog. The `boost` bundle has a named HEAD hook, a
+crate (`boost-engine`, depending on the locked `serde_json`, with its own `data/` and a `bake` bin),
+a binary data file and a post-build step. The staged workspace passes `cargo test --workspace --locked
+--offline`, so the edited `Cargo.lock` is accepted unchanged. Nine integration tests cover the
+compiled path, unchanged bytes and mtimes (including the crate's files across a helper edit), two
+mods' crates, and every new diagnostic. Applying a crate-carrying bundle to a Horizon `main` export
+(with the #3871 catalog) also produced a stage that `cargo metadata --locked` accepts. The suite has
+89 integration tests. Plans and package version are schema 6 / 0.6.0.

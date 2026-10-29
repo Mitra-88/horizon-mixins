@@ -37,7 +37,14 @@ impl Diagnostic {
     pub fn injection(mut self, mod_id: &str, injection: &crate::manifest::Injection) -> Self {
         self.mod_id = Some(mod_id.into());
         self.injection_id = Some(injection.id.clone().into());
-        self.target = Some(injection.target.clone().into());
+        self.target = if injection.target.is_empty() {
+            injection
+                .hook
+                .as_ref()
+                .map(|h| format!("hook {h} v{}", injection.hook_version.unwrap_or(0)).into())
+        } else {
+            Some(injection.target.clone().into())
+        };
         self.selector = injection.selector.as_deref().map(Into::into);
         self
     }

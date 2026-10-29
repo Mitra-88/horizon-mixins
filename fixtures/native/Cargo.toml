@@ -1,0 +1,7 @@
+[workspace]
+# The bundle crates are appended to this list in the stage.
+members = [
+    "game",
+    "driver",
+]
+resolver = "2"

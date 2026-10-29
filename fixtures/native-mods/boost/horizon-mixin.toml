@@ -1,0 +1,21 @@
+[mod]
+id = "boost"
+version = "0.1.0"
+
+[[injection]]
+id = "tick"
+hook = "tick"
+hook_version = 1
+kind = "HEAD"
+helper = "tick.rs"
+bindings = [{ name = "game", ty = "&mut Game", value = "self" }]
+
+[[crate]]
+id = "engine"
+path = "engine"
+dependent = "native-game"
+
+[[post_build]]
+crate = "engine"
+bin = "bake"
+args = ["--quick"]

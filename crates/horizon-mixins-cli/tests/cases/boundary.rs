@@ -86,7 +86,9 @@ fn head_preserves_lifetime_methods_closures_question_mark_and_drop() {
         fs::write(&snapshot, &generated).unwrap();
     }
     assert_eq!(fs::read_to_string(snapshot).unwrap(), generated);
-    let planned = serde_json::to_string_pretty(&p).unwrap() + "\n";
+    let mut portable = p.clone();
+    portable.rustc = "<pinned toolchain>".into();
+    let planned = serde_json::to_string_pretty(&portable).unwrap() + "\n";
     let path = repo().join("crates/horizon-mixins-cli/tests/snapshots/boundary-plan.json");
     if std::env::var_os("UPDATE_SNAPSHOTS").is_some() {
         fs::write(&path, &planned).unwrap();

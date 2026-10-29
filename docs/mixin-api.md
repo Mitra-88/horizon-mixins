@@ -127,3 +127,8 @@ Body-rewriting hooks can coexist with validated `format!`, `matches!` and `vec!`
 inputs. Macro invocations stay unchanged; hidden control flow, ambiguous macro
 identity and selectors matching macro internals are rejected. See
 [standard macro contracts](standard-macros.md).
+
+Version 0.6.0 adds `hook`/`hook_version` (exactly one of `target` or `hook` per injection),
+`[[crate]]` and `[[post_build]]`, and stages a bundle's `data/` folder. A bundle may now consist of
+crates only. CLI success reports include `crates`, `data` and `post_build` counts, and plans use
+schema 6. See [named hooks, bundle crates, data and post-build steps](crates-data-and-named-hooks.md).
