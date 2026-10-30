@@ -92,7 +92,9 @@ closures, async, await, `?`/try, unsafe/const blocks, nested items or calls unde
 references are outside the proven MVP subset. RETURN is narrower: it refuses
 closures and calls under references only inside the values it moves (each
 `return` operand and the function tail); see
-[advanced injections](advanced-injections.md). Generic, const, unsafe and
+[advanced injections](advanced-injections.md). MODIFY_VARIABLE refuses closures, `?`
+and calls under references only inside the value it modifies; see
+[scopes and bridges](scopes-and-bridges.md). Generic, const, unsafe and
 foreign-ABI target functions are also rejected. Feature-gated module trees
 and Cargo targets are not guessed or expanded.
 

@@ -538,6 +538,11 @@ pub fn build_staged(workspace: &Path, mods: &Path) -> Result<(Plan, crate::nativ
                         "selected variable access is a place/compound write or unsupported context",
                     )));
                 }
+                if let Some((code, why)) =
+                    modified_value_error(&catalog.values[site.expression].expr)
+                {
+                    return Err(context(Diagnostic::new(code, why).file(&f.file)));
+                }
                 Some(site)
             } else {
                 None
@@ -926,8 +931,11 @@ pub(crate) fn validate_target(index: &Index, f: &Function, kind: Kind) -> Result
         boundary: kind == Kind::Head,
         // RETURN moves only exit values (`return` operands and the tail) into a helper call
         // argument and leaves the rest of the body as it was. References to calls and closures
-        // are checked in those values only ([`exit_value_error`]).
-        rewrites_body: kind != Kind::Return,
+        // are checked in those values only ([`exit_value_error`]). MODIFY_VARIABLE likewise
+        // replaces only the value it selects ([`modified_value_error`]).
+        rewrites_body: !matches!(kind, Kind::Return | Kind::ModifyVariable),
+        // A `?` is an exit RETURN would miss; MODIFY_VARIABLE leaves one outside its value alone.
+        try_outside_value: kind == Kind::ModifyVariable,
         body_macros: false,
         in_body: false,
         macro_depth: 0,
@@ -1007,10 +1015,30 @@ fn exit_value_error(block: &syn::Block) -> Option<(&'static str, &'static str)> 
     }
     find.error
 }
+/// What MODIFY_VARIABLE refuses in the one value it replaces (a read, or the value a `let` or an
+/// assignment stores): a closure, a `?`, or a call beneath a reference, whose meaning wrapping
+/// the value could change. The rest of the body is left as it was.
+fn modified_value_error(value: &Expr) -> Option<(&'static str, &'static str)> {
+    struct Find(Option<(&'static str, &'static str)>);
+    impl<'ast> Visit<'ast> for Find {
+        fn visit_expr(&mut self, e: &'ast Expr) {
+            match e {
+                Expr::Closure(_) | Expr::Try(_) => self.0 = Some(CLOSURES_ETC),
+                Expr::Reference(r) if contains_call(&r.expr) => self.0 = Some(REFERENCED_CALL),
+                _ => {}
+            }
+            visit::visit_expr(self, e);
+        }
+    }
+    let mut find = Find(None);
+    find.visit_expr(value);
+    find.0
+}
 struct Safety {
     error: Option<(&'static str, &'static str)>,
     boundary: bool,
     rewrites_body: bool,
+    try_outside_value: bool,
     body_macros: bool,
     in_body: bool,
     macro_depth: usize,
@@ -1071,6 +1099,7 @@ impl<'ast> Visit<'ast> for Safety {
         match expr {
             // RETURN never rewrites inside a closure; what is inside is still checked.
             Expr::Closure(c) if !self.rewrites_body && c.asyncness.is_none() => {}
+            Expr::Try(_) if self.try_outside_value => {}
             Expr::Closure(_)
             | Expr::Async(_)
             | Expr::Await(_)

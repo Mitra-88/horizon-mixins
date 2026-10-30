@@ -824,3 +824,6 @@ mod native;
 
 #[path = "cases/returns.rs"]
 mod returns;
+
+#[path = "cases/variables.rs"]
+mod variables;

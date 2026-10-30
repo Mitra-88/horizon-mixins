@@ -197,6 +197,14 @@ Identity/type failures use `E_LOCAL_NOT_FOUND` or `E_VARIABLE_TYPE`, count/ordin
 failures use `E_MATCH_COUNT`/`E_ORDINAL`, and unproven accesses use
 `E_UNSUPPORTED_SITE` or `E_UNSUPPORTED_LOCAL`.
 
+MODIFY_VARIABLE replaces only the value it selects (the read, or the value a
+`let` or an assignment stores); the rest of the body is untouched. So, elsewhere
+in the body, it allows a plain (not async) closure, a `?`, and a call beneath a
+reference, as RETURN does outside its exit values. Inside the selected value all
+three stay `E_UNSUPPORTED_CONTROL_FLOW`. An access inside a closure still counts
+toward `require`, but selecting one is `E_UNSUPPORTED_LOCAL`: no hook runs inside
+a closure. Locals declared inside a closure are not declarations of the function.
+
 ## Reusable field and method bridges
 
 A mod may declare `[[bridge]]` entries, independently of injections. GET and
