@@ -821,3 +821,6 @@ mod standard_macros;
 
 #[path = "cases/native.rs"]
 mod native;
+
+#[path = "cases/returns.rs"]
+mod returns;
