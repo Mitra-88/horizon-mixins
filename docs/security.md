@@ -25,7 +25,6 @@ Rust privacy, ownership, borrowing, orphan rules and trait resolution still
 apply. Helpers compile inside the target crate with explicit context. `syn`
 provides syntax, not macro expansion or semantic resolution. Unproven source
 contexts are rejected; successful compilation does not establish gameplay safety.
-Horizon's WebAssembly mod system remains separate.
 
 No game binaries, Minecraft assets, decompiled Java or prepared resources belong
 in this repository. The Horizon prototype exports only committed Rust crate
