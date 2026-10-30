@@ -12,6 +12,7 @@ jobs:
       - name: Install pinned stable toolchain
         run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt --component clippy
       - run: cargo fetch --locked
+      - run: cargo fetch --locked --manifest-path fixtures/native/Cargo.toml
       - run: python3 tools/feasibility.py
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings

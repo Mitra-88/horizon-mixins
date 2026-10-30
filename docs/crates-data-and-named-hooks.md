@@ -16,6 +16,7 @@ mtimes, symlinks and `..` fail, and every failure is a structured diagnostic. Pl
 The compiled example is `fixtures/native` with `fixtures/native-mods/boost`:
 
 ```sh
+cargo fetch --locked --manifest-path fixtures/native/Cargo.toml
 cargo run --locked -p horizon-mixins-cli -- check \
   --workspace fixtures/native --mods fixtures/native-mods \
   --out target/native-game --trust-native-mods
@@ -73,10 +74,18 @@ and `node_modules/` inside it are skipped, as in the workspace. The stage then:
 3. adds the package to `Cargo.lock`: a `[[package]]` entry in Cargo's order and format, and its name
    in the dependent's `dependencies` list.
 
-Manifests are edited with `toml_edit`, so comments and formatting elsewhere stay. Every other byte of
-`Cargo.lock` stays, and no registry package is added or changed. That is why the stage still builds
-with `--locked` (verified on the fixture and against a Horizon `main` export with
-`cargo metadata --locked`). Crates are staged in mod id order, then manifest order.
+Manifests are edited with `toml_edit`, so comments and formatting elsewhere stay. Crates are staged
+in mod id order, then manifest order.
+
+The lock entries the stage writes cannot know which optional dependencies a registry crate's
+features use, its default features included: `hashbrown = "0.15"` uses `allocator-api2` and
+`equivalent`, which a workspace may lock for other crates while it uses hashbrown without its
+defaults. So `apply` and `check` then run `cargo update --workspace` on a scratch copy of the stage
+(offline from Cargo's cache first, else from the registry index; no crate is downloaded). It
+re-resolves only the workspace members and keeps every locked version, adding the dependency edges
+the features need. The stage gets that lock. A registry package it adds or changes (name, version,
+source or checksum) is refused with `E_CRATE_DEPENDENCY`, naming it, before anything is staged: no
+registry package is ever added or changed, so the stage builds with `--locked`.
 
 A bundle crate's dependencies must be plain registry requirements: a version string, or a table using
 only `version`, `features`, `default-features` and `optional`. This applies to `[dependencies]`,
@@ -84,9 +93,6 @@ only `version`, `features`, `default-features` and `optional`. This applies to `
 in the workspace's `Cargo.lock`; the highest matching locked version is used. Horizon's lock file is
 the allow list. A crate cannot depend on the game crate (Cargo forbids the cycle) or on any path or
 git crate. The game glue stays in helpers and support modules, and the heavy logic goes in the crate.
-
-The tool cannot see features that turn on optional dependencies of a registry crate that the lock
-does not already have. The `--locked` build catches those ("the lock file needs to be updated").
 
 The crate's own data lives inside its folder and is copied with it:
 `include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/data/table.json"))`.

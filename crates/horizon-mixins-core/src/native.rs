@@ -174,6 +174,44 @@ struct LockPackage {
     name: String,
     version: String,
     source: Option<String>,
+    checksum: Option<String>,
+}
+
+/// Refuse what `cargo update --workspace` added to the stage's lock (`updated`): a registry
+/// package that the workspace's own lock (`original`) lacks, or has in another version, source or
+/// checksum. The features of a bundle crate's dependencies may only add dependency edges between
+/// packages that are already locked; the workspace's lock stays the allow list.
+pub fn refuse_new_packages(plan: &Plan, original: &str, updated: &str) -> Result<()> {
+    type Locked = (String, String, String, Option<String>);
+    let downloaded = |text: &str| -> Result<BTreeSet<Locked>> {
+        let lock: Lock = toml::from_str(text).map_err(|e| {
+            Diagnostic::new("E_CRATE", format!("cannot read Cargo.lock: {e}")).file("Cargo.lock")
+        })?;
+        Ok(lock
+            .package
+            .into_iter()
+            .filter_map(|p| Some((p.name, p.version, p.source?, p.checksum)))
+            .collect())
+    };
+    let known = downloaded(original)?;
+    let added: Vec<String> = downloaded(updated)?
+        .difference(&known)
+        .map(|(name, version, ..)| format!("{name} {version}"))
+        .collect();
+    if added.is_empty() {
+        return Ok(());
+    }
+    let mods: BTreeSet<&str> = plan.crates.iter().map(|c| c.mod_id.as_str()).collect();
+    Err(Diagnostic::new(
+        "E_CRATE_DEPENDENCY",
+        format!(
+            "{} needs {}, which {} in Horizon's Cargo.lock: a feature of one of its crates' \
+             dependencies turns it on",
+            mods.into_iter().collect::<Vec<_>>().join(", "),
+            added.join(", "),
+            if added.len() == 1 { "isn't" } else { "aren't" }
+        ),
+    ))
 }
 
 pub struct Planned {
