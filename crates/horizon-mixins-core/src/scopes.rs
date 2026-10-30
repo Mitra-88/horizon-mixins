@@ -23,6 +23,10 @@ pub struct Local {
     pub supported: bool,
     pub ty: Option<String>,
     pub fingerprint: String,
+    /// Declared inside a closure: never visible where a hook runs (hooks refuse closures around
+    /// their site), so it neither takes nor shifts the ordinals captures name.
+    #[serde(skip)]
+    pub in_closure: bool,
 }
 #[derive(Debug, Clone)]
 pub struct Context {
@@ -107,6 +111,8 @@ pub struct Scopes {
     constant: bool,
     place: bool,
     ignore_reads: bool,
+    /// How many closures the visitor is inside.
+    closures: usize,
 }
 impl Scopes {
     pub fn analyze(f: &Function) -> Self {
@@ -136,6 +142,7 @@ impl Scopes {
                 supported: true,
                 ty,
                 fingerprint: source::fingerprint(tokens(input)),
+                in_closure: false,
             });
             scopes.frames[0].1.insert(name, id);
         }
@@ -182,10 +189,11 @@ impl Scopes {
             .into_iter()
             .map(|(name, mutable)| {
                 let id = self.locals.len();
+                let in_closure = self.closures > 0;
                 let ordinal = self
                     .locals
                     .iter()
-                    .filter(|l| !l.parameter && l.name == name)
+                    .filter(|l| !l.parameter && l.in_closure == in_closure && l.name == name)
                     .count();
                 self.locals.push(Local {
                     id,
@@ -196,6 +204,7 @@ impl Scopes {
                     supported: allow && plain,
                     ty: ty.clone(),
                     fingerprint: fingerprint.into(),
+                    in_closure,
                 });
                 id
             })
@@ -213,7 +222,9 @@ impl Scopes {
     pub fn declaration(&self, name: &str, ordinal: usize, parameter: bool) -> Result<&Local> {
         self.locals
             .iter()
-            .find(|l| l.name == name && l.ordinal == ordinal && l.parameter == parameter)
+            .find(|l| {
+                l.name == name && l.ordinal == ordinal && l.parameter == parameter && !l.in_closure
+            })
             .ok_or_else(|| {
                 Diagnostic::new(
                     "E_LOCAL_NOT_FOUND",
@@ -451,11 +462,17 @@ impl<'ast> Visit<'ast> for Scopes {
         visit::visit_generic_argument(self, a);
         self.constant = old;
     }
+    fn visit_expr_closure(&mut self, c: &'ast syn::ExprClosure) {
+        self.closures += 1;
+        visit::visit_expr_closure(self, c);
+        self.closures -= 1;
+    }
     fn visit_expr(&mut self, expr: &'ast Expr) {
         let expression = self.contexts.len();
         let context = self.context();
         self.contexts.push(context.clone());
-        if matches!(expr, Expr::Return(_)) {
+        // A closure's own `return` leaves the closure: it is not an exit of the target.
+        if matches!(expr, Expr::Return(_)) && self.closures == 0 {
             self.returns.push(expression);
         }
         if !self.ignore_reads

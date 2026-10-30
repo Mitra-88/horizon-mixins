@@ -89,7 +89,10 @@ BEFORE_CALL supports complete expression statements, plain identifier `let`
 initializers and block/function tails. Other placements fail with
 `E_UNSUPPORTED_SITE`. Functions containing opaque macros, unresolved cfg,
 closures, async, await, `?`/try, unsafe/const blocks, nested items or calls under
-references are outside the proven MVP subset. Generic, const, unsafe and
+references are outside the proven MVP subset. RETURN is narrower: it refuses
+closures and calls under references only inside the values it moves (each
+`return` operand and the function tail); see
+[advanced injections](advanced-injections.md). Generic, const, unsafe and
 foreign-ABI target functions are also rejected. Feature-gated module trees
 and Cargo targets are not guessed or expanded.
 

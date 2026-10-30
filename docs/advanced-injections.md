@@ -27,8 +27,9 @@ explicit target parameter context or validated lexical captures. Modifiers compo
 Original return expressions evaluate once. Non-unit functions without a value
 tail require syntactically proven explicit exits. If an aliased unit result has
 no such exits, write an explicit `()` tail; we do not guess alias resolution. Function-scope locals remain alive
-while return modifiers run. Panics are not normal returns. Existing `?`, async
-and macros remain unsupported rather than being silently missed.
+while return modifiers run. Panics are not normal returns. `?`, async and a
+`return` inside a macro remain unsupported rather than being silently missed; standard
+macros elsewhere are preserved (see the macro section).
 
 A RETURN modifier moves only the exit values (each `return` operand and the
 function tail) into its helper's argument; the rest of the body is untouched.
@@ -38,8 +39,10 @@ So, elsewhere in the body, RETURN allows:
   statement or `let x = &make();` whose temporary is extended: it keeps its
   temporary lifetime;
 - a plain (not async) closure, such as `.filter(|s| ...)`: a `return` inside it
-  leaves the closure, and RETURN does not rewrite it. What the closure holds is
-  still checked, so `?`, async and unsafe inside it stay refused.
+  leaves the closure, and RETURN does not rewrite it or treat it as an exit. What
+  the closure holds is still checked, so `?`, async and unsafe inside it stay
+  refused. Locals declared inside a closure do not count toward capture ordinals:
+  `$local_ref:later:0` is the first `later` of the function itself.
 
 Inside an exit value both stay `E_UNSUPPORTED_CONTROL_FLOW`. A target that also
 has an interior hook (BEFORE_CALL, AFTER_CALL, value and variable modifiers)

@@ -78,9 +78,10 @@ its function.
 BEFORE_CALL requires an exact syntax selector, explicit total `require`, and
 zero-based `ordinal`. It supports a complete expression statement, plain `let`
 initializer, or block/function tail. Calls nested in larger expressions are
-rejected because wrapping them can change temporary drop timing. Macro sites,
-unresolved cfg, async/closures/`?`, generic/unsafe/const targets, and ambiguous
-source identities are rejected. Rust checks privacy, types and borrowing in
+rejected because wrapping them can change temporary drop timing. For BEFORE_CALL, macro
+sites, unresolved cfg, async/closures/`?`, generic/unsafe/const targets, and
+ambiguous source identities are rejected (RETURN allows closures and references to
+calls outside the values it returns). Rust checks privacy, types and borrowing in
 `check`; successful planning alone does not guarantee compilation.
 
 The five advanced features have a separate compilation fixture:
