@@ -338,6 +338,59 @@ fn post_build_steps_name_a_bin_of_the_mods_own_crate() {
     .unwrap();
     assert_eq!(build_plan(&f.root, &f.mods).unwrap().post_build.len(), 1);
 }
+#[test]
+fn post_build_bins_never_share_a_file_in_the_target_folder() {
+    // Two mods' steps both named "bake": one would run the other's program.
+    let f = fixture();
+    copy(&f.mods.join("boost"), &f.mods.join("second"));
+    manifest(&f, "second", |v| {
+        v["mod"].as_table_mut().unwrap()["id"] = "second".into();
+        v.remove("injection");
+    });
+    fs::remove_file(f.mods.join("second/tick.rs")).unwrap();
+    fs::write(
+        f.mods.join("second/engine/Cargo.toml"),
+        ENGINE.replace("boost-engine", "second-engine") + "serde_json = \"1\"\n",
+    )
+    .unwrap();
+    fs::rename(
+        f.mods.join("second/engine/src/bin/bake.rs"),
+        f.mods.join("second/engine/src/bin/Bake.rs"),
+    )
+    .unwrap();
+    manifest(&f, "second", |v| {
+        first(v, "post_build").insert("bin".into(), "Bake".into());
+    });
+    let e = failure(&f, "E_POST_BUILD");
+    assert!(
+        e.message.contains("of mod 'boost' (crate 'engine')"),
+        "{e:?}"
+    );
+    assert_eq!(e.mod_id.as_deref(), Some("second"));
+    // A step named like one of the workspace's bins would replace that program.
+    let f = fixture();
+    fs::write(f.root.join("driver/src/main.rs"), "fn main() {}\n").unwrap();
+    fs::rename(
+        f.mods.join("boost/engine/src/bin/bake.rs"),
+        f.mods.join("boost/engine/src/bin/native-driver.rs"),
+    )
+    .unwrap();
+    manifest(&f, "boost", |v| {
+        first(v, "post_build").insert("bin".into(), "native-driver".into());
+    });
+    let e = failure(&f, "E_POST_BUILD");
+    assert!(
+        e.message.contains("the workspace's bin 'native-driver'"),
+        "{e:?}"
+    );
+    // One mod may run the same bin twice, with other arguments.
+    let f = fixture();
+    manifest(&f, "boost", |v| {
+        let steps = v["post_build"].as_array_mut().unwrap();
+        steps.push(steps[0].clone());
+    });
+    assert_eq!(build_plan(&f.root, &f.mods).unwrap().post_build.len(), 2);
+}
 #[cfg(unix)]
 #[test]
 fn symlinks_and_reserved_stage_paths_are_rejected() {
