@@ -27,8 +27,23 @@ explicit target parameter context or validated lexical captures. Modifiers compo
 Original return expressions evaluate once. Non-unit functions without a value
 tail require syntactically proven explicit exits. If an aliased unit result has
 no such exits, write an explicit `()` tail; we do not guess alias resolution. Function-scope locals remain alive
-while return modifiers run. Panics are not normal returns. Existing `?`, async,
-closures and macros remain unsupported rather than being silently missed.
+while return modifiers run. Panics are not normal returns. Existing `?`, async
+and macros remain unsupported rather than being silently missed.
+
+A RETURN modifier moves only the exit values (each `return` operand and the
+function tail) into its helper's argument; the rest of the body is untouched.
+So, elsewhere in the body, RETURN allows:
+
+- a call beneath a reference, such as `decode(Some(&Tag::Compound(all)))` in a
+  statement or `let x = &make();` whose temporary is extended: it keeps its
+  temporary lifetime;
+- a plain (not async) closure, such as `.filter(|s| ...)`: a `return` inside it
+  leaves the closure, and RETURN does not rewrite it. What the closure holds is
+  still checked, so `?`, async and unsafe inside it stay refused.
+
+Inside an exit value both stay `E_UNSUPPORTED_CONTROL_FLOW`. A target that also
+has an interior hook (BEFORE_CALL, AFTER_CALL, value and variable modifiers)
+keeps the check over the whole body for that hook, since it rewrites there.
 
 MODIFY_ARG selects a call with selector/require/ordinal and an explicit
 zero-based `argument` index (excluding a method receiver). Its `$value` binding

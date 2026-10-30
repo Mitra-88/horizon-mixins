@@ -924,6 +924,10 @@ pub(crate) fn validate_target(index: &Index, f: &Function, kind: Kind) -> Result
     let mut safety = Safety {
         error: None,
         boundary: kind == Kind::Head,
+        // RETURN moves only exit values (`return` operands and the tail) into a helper call
+        // argument and leaves the rest of the body as it was. References to calls and closures
+        // are checked in those values only ([`exit_value_error`]).
+        rewrites_body: kind != Kind::Return,
         body_macros: false,
         in_body: false,
         macro_depth: 0,
@@ -939,6 +943,9 @@ pub(crate) fn validate_target(index: &Index, f: &Function, kind: Kind) -> Result
     safety.body_macros = safety.boundary;
     safety.in_body = true;
     safety.visit_block(&f.block);
+    if safety.error.is_none() && kind == Kind::Return {
+        safety.error = exit_value_error(&f.block);
+    }
     if let Some((code, why)) = safety.error {
         return Err(Diagnostic::new(code, why).file(&f.file));
     }
@@ -948,9 +955,62 @@ pub(crate) fn validate_target(index: &Index, f: &Function, kind: Kind) -> Result
     Ok(safety.hidden)
 }
 
+const REFERENCED_CALL: (&str, &str) = (
+    "E_UNSUPPORTED_CONTROL_FLOW",
+    "calls beneath a reference may change temporary lifetimes",
+);
+const CLOSURES_ETC: (&str, &str) = (
+    "E_UNSUPPORTED_CONTROL_FLOW",
+    "closures, async, try/?, unsafe and const blocks are unsupported injection contexts",
+);
+/// What RETURN refuses in the values it moves into a helper argument: each `return` operand
+/// and the body's tail. A call beneath a reference there could change temporary lifetimes, and
+/// a closure there is refused as before. Closures elsewhere are left alone: a `return` inside
+/// one leaves the closure, not the target, and RETURN does not rewrite it.
+fn exit_value_error(block: &syn::Block) -> Option<(&'static str, &'static str)> {
+    struct Find {
+        exits: usize,
+        error: Option<(&'static str, &'static str)>,
+    }
+    impl<'ast> Visit<'ast> for Find {
+        fn visit_expr(&mut self, e: &'ast Expr) {
+            match e {
+                Expr::Closure(_) if self.exits > 0 => self.error = Some(CLOSURES_ETC),
+                Expr::Closure(_) => return,
+                Expr::Return(r) => {
+                    self.exits += 1;
+                    visit::visit_expr_return(self, r);
+                    self.exits -= 1;
+                    return;
+                }
+                Expr::Reference(r) if self.exits > 0 && contains_call(&r.expr) => {
+                    self.error = Some(REFERENCED_CALL)
+                }
+                _ => {}
+            }
+            visit::visit_expr(self, e);
+        }
+    }
+    let mut find = Find {
+        exits: 0,
+        error: None,
+    };
+    for (i, stmt) in block.stmts.iter().enumerate() {
+        match stmt {
+            syn::Stmt::Expr(e, None) if i + 1 == block.stmts.len() => {
+                find.exits += 1;
+                find.visit_expr(e);
+                find.exits -= 1;
+            }
+            _ => find.visit_stmt(stmt),
+        }
+    }
+    find.error
+}
 struct Safety {
     error: Option<(&'static str, &'static str)>,
     boundary: bool,
+    rewrites_body: bool,
     body_macros: bool,
     in_body: bool,
     macro_depth: usize,
@@ -1009,6 +1069,8 @@ impl<'ast> Visit<'ast> for Safety {
             return;
         }
         match expr {
+            // RETURN never rewrites inside a closure; what is inside is still checked.
+            Expr::Closure(c) if !self.rewrites_body && c.asyncness.is_none() => {}
             Expr::Closure(_)
             | Expr::Async(_)
             | Expr::Await(_)
@@ -1016,18 +1078,12 @@ impl<'ast> Visit<'ast> for Safety {
             | Expr::TryBlock(_)
             | Expr::Yield(_)
             | Expr::Unsafe(_)
-            | Expr::Const(_) => {
-                self.error = Some((
-                    "E_UNSUPPORTED_CONTROL_FLOW",
-                    "closures, async, try/?, unsafe and const blocks are unsupported injection contexts",
-                ))
-            }
+            | Expr::Const(_) => self.error = Some(CLOSURES_ETC),
             // Calls under a reference can depend on temporary lifetime extension.
-            Expr::Reference(r) if self.macro_depth == 0 && contains_call(&r.expr) => {
-                self.error = Some((
-                    "E_UNSUPPORTED_CONTROL_FLOW",
-                    "calls beneath a reference may change temporary lifetimes",
-                ))
+            Expr::Reference(r)
+                if self.rewrites_body && self.macro_depth == 0 && contains_call(&r.expr) =>
+            {
+                self.error = Some(REFERENCED_CALL)
             }
             _ => {}
         }
