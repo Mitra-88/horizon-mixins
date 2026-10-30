@@ -320,7 +320,7 @@ pub fn build_staged(workspace: &Path, mods: &Path) -> Result<(Plan, crate::nativ
         .collect();
     crate::native::resolve_hooks(&root, &mut mods)?;
     let index = Index::load(&root)?;
-    let native = crate::native::plan(&root, &index.packages, &inputs, &mods)?;
+    let native = crate::native::plan(&root, &index.packages, &index.bins, &inputs, &mods)?;
     let mut injections = Vec::new();
     let mut planned_bridges = Vec::new();
     let mut planned_states = Vec::new();

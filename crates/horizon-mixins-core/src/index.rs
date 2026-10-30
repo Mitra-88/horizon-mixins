@@ -32,6 +32,8 @@ pub struct Index {
     pub source_owners: BTreeMap<String, BTreeSet<String>>,
     /// Workspace member package name → its manifest, relative to the workspace root.
     pub packages: BTreeMap<String, String>,
+    /// The workspace members' bin target names.
+    pub bins: BTreeSet<String>,
 }
 #[derive(Debug, Clone)]
 pub struct TypeDefinition {
@@ -131,6 +133,7 @@ impl Index {
             files: BTreeMap::new(),
             source_owners: BTreeMap::new(),
             packages: BTreeMap::new(),
+            bins: BTreeSet::new(),
         };
         for package in &metadata.packages {
             if !metadata.workspace_members.contains(&package.id) {
@@ -151,6 +154,9 @@ impl Index {
                 .replace('\\', "/");
             index.packages.insert(package.name.to_string(), manifest);
             for target in &package.targets {
+                if target.kind.contains(&cargo_metadata::TargetKind::Bin) {
+                    index.bins.insert(target.name.clone());
+                }
                 if !target.kind.iter().any(|k| {
                     matches!(
                         k,

@@ -196,6 +196,7 @@ fn normalized(name: &str) -> String {
 pub fn plan(
     root: &Path,
     packages: &BTreeMap<String, String>,
+    workspace_bins: &BTreeSet<String>,
     inputs: &BTreeMap<String, String>,
     mods: &[LoadedMod],
 ) -> Result<Planned> {
@@ -238,6 +239,9 @@ pub fn plan(
             .or_insert_with(|| format!("'{}' in Cargo.lock", package.name));
     }
     let mut dependents: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    // Every bin is built into the same target folder, so a post-build bin's file name (ignoring
+    // case, for macOS and Windows) is taken by the workspace's bins and by other crates' steps.
+    let mut bin_owners: BTreeMap<String, (String, String)> = BTreeMap::new();
     for bundle in mods {
         let mod_id = &bundle.manifest.info.id;
         let mut packages_by_crate = BTreeMap::new();
@@ -362,6 +366,34 @@ pub fn plan(
                         }
                     ),
                 ));
+            }
+            let file = post.bin.to_lowercase();
+            let clash = |owner: String| {
+                crate_error(
+                    bundle,
+                    &post.crate_id,
+                    "E_POST_BUILD",
+                    format!(
+                        "post_build bin '{}' has the file name of {owner}; every bin is built \
+                         into the same target folder, so rename the bin",
+                        post.bin
+                    ),
+                )
+            };
+            if let Some(bin) = workspace_bins.iter().find(|b| b.to_lowercase() == file) {
+                return Err(clash(format!("the workspace's bin '{bin}'")));
+            }
+            let owner = (mod_id.clone(), post.crate_id.clone());
+            match bin_owners.get(&file) {
+                Some(other) if *other != owner => {
+                    return Err(clash(format!(
+                        "the post-build bin of mod '{}' (crate '{}')",
+                        other.0, other.1
+                    )));
+                }
+                _ => {
+                    bin_owners.insert(file, owner);
+                }
             }
             planned.post_build.push(PlannedPostBuild {
                 mod_id: mod_id.clone(),

@@ -154,7 +154,9 @@ has a step:
 
 Entries are in mod id order, then manifest order. The launcher builds and runs them after the game
 compiles. `E_POST_BUILD` covers a `crate` that is not one of the mod's crates, an invalid bin name,
-and a bin the crate does not have (the message lists the crate's bins).
+a bin the crate does not have (the message lists the crate's bins), and a bin whose file name
+(ignoring case) is already a workspace bin or another crate's post-build bin: every bin is built
+into the same target folder, so one would replace the other.
 
 ## Reserved paths
 
