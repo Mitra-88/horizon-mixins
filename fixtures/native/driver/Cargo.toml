@@ -6,3 +6,9 @@ edition = "2024"
 [dependencies]
 native-game = { path = "../game" }
 serde_json = "1"
+# As in Horizon's lock: hashbrown 0.15 without its default features, while allocator-api2 and
+# equivalent are locked for other uses. A bundle crate asking for hashbrown's defaults then needs
+# only new edges between locked packages.
+hashbrown = { version = "0.15", default-features = false, features = ["default-hasher"] }
+allocator-api2 = "0.2"
+equivalent = "1"

@@ -1,3 +1,4 @@
+mod lockfile;
 mod staging;
 use clap::{Args, Parser, Subcommand};
 use horizon_mixins_core::{Diagnostic, Result, build_plan, build_staged, diagnostic::io, native};
@@ -119,6 +120,7 @@ fn run(cli: Cli) -> Result<serde_json::Value> {
     let (plan, extras) = build_staged(&root, &mods)?;
     let mut files = horizon_mixins_transform::transform(&root, &plan)?;
     native::stage(&plan, &mut files, extras)?;
+    lockfile::complete(&root, &out, &plan, &mut files)?;
     let stage_changed = staging::publish(&root, &out, files, &plan)?;
     let transformation_seconds = start.elapsed().as_secs_f64();
     let mut result = json!({"status":"ok", "stage":out, "injections":plan.injections.len(), "bridges":plan.bridges.len(), "modules":plan.modules.len(), "states":plan.states.len(),

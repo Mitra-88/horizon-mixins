@@ -62,7 +62,7 @@ fn bundle_crate_data_and_named_hook_compile_with_the_locked_registry() {
     );
     let lock = String::from_utf8_lossy(&staged["Cargo.lock"]);
     assert!(lock.contains(
-        "[[package]]\nname = \"boost-engine\"\nversion = \"0.1.0\"\ndependencies = [\n \"serde_json\",\n]\n\n[[package]]\nname = \"itoa\""
+        "[[package]]\nname = \"boost-engine\"\nversion = \"0.1.0\"\ndependencies = [\n \"serde_json\",\n]\n\n[[package]]\nname = \"equivalent\""
     ));
     assert!(lock.contains("name = \"native-game\"\nversion = \"0.1.0\"\ndependencies = [\n \"boost-engine\",\n \"serde\",\n]"));
     assert_eq!(
@@ -390,6 +390,54 @@ fn post_build_bins_never_share_a_file_in_the_target_folder() {
         steps.push(steps[0].clone());
     });
     assert_eq!(build_plan(&f.root, &f.mods).unwrap().post_build.len(), 2);
+}
+#[test]
+fn default_features_may_link_locked_packages_but_never_add_one() {
+    // hashbrown 0.15 is locked without its default features (the driver's, as in Horizon), while
+    // allocator-api2 and equivalent, which the defaults use, are locked for other crates.
+    let f = fixture();
+    engine_manifest(
+        &f,
+        &format!("{ENGINE}serde_json = \"1\"\nhashbrown = \"0.15\"\n"),
+    );
+    let first = f.run("check");
+    assert_eq!(first["crates"], 1);
+    let lock = fs::read_to_string(f.out.join("Cargo.lock")).unwrap();
+    let hashbrown = lock
+        .split("\n\n")
+        .find(|b| b.contains("name = \"hashbrown\""))
+        .unwrap();
+    assert!(
+        hashbrown.ends_with(
+            "dependencies = [\n \"allocator-api2\",\n \"equivalent\",\n \"foldhash\",\n]"
+        ),
+        "{hashbrown}"
+    );
+    let original = fs::read_to_string(f.root.join("Cargo.lock")).unwrap();
+    let packages = |text: &str| text.matches("[[package]]").count();
+    assert_eq!(
+        packages(&lock),
+        packages(&original) + 1,
+        "only boost-engine is added"
+    );
+    let times = mtimes(&f.out);
+    assert_eq!(f.run("apply")["stage_changed"], false);
+    assert_eq!(mtimes(&f.out), times);
+    // serde_json's preserve_order needs indexmap, which the lock lacks: refused, nothing staged.
+    let f = fixture();
+    engine_manifest(
+        &f,
+        &format!("{ENGINE}serde_json = {{ version = \"1\", features = [\"preserve_order\"] }}\n"),
+    );
+    let output = f.command("apply").output().unwrap();
+    assert!(!output.status.success());
+    let text = String::from_utf8_lossy(&output.stdout) + String::from_utf8_lossy(&output.stderr);
+    assert!(text.contains("E_CRATE_DEPENDENCY"), "{text}");
+    assert!(
+        text.contains("boost needs ") && text.contains("indexmap 2."),
+        "{text}"
+    );
+    assert!(!f.out.exists());
 }
 #[cfg(unix)]
 #[test]
