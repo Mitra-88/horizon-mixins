@@ -266,7 +266,7 @@ impl Scopes {
                     local: *local,
                     expression,
                     at: Access::Store,
-                    supported,
+                    supported: supported && self.closures == 0,
                     fingerprint,
                 });
             }
@@ -486,7 +486,8 @@ impl<'ast> Visit<'ast> for Scopes {
                 local: *local,
                 expression,
                 at: Access::Load,
-                supported: !self.place && !self.constant,
+                // Counted but never rewritten inside a closure (no hook runs there).
+                supported: !self.place && !self.constant && self.closures == 0,
                 fingerprint: source::fingerprint(tokens(expr)),
             });
         }
