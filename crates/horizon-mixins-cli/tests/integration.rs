@@ -827,3 +827,25 @@ mod returns;
 
 #[path = "cases/variables.rs"]
 mod variables;
+
+#[test]
+fn production_test_cfg_modules_are_indexed_and_applied() {
+    let f = Fixture::new();
+    f.replace(
+        "engine/src/lib.rs",
+        "pub mod entity;",
+        "#[cfg(not(test))]\npub mod entity;",
+    );
+    fs::write(
+        f.root.join("engine/src/main.rs"),
+        "#[cfg(test)]\nmod entity;\nfn main() {}\n",
+    )
+    .unwrap();
+    f.run("apply");
+    let staged = fs::read_to_string(f.out.join("engine/src/entity.rs")).unwrap();
+    assert!(staged.contains("alpha"));
+
+    f.replace("engine/src/lib.rs", "#[cfg(not(test))]", "#[cfg(test)]");
+    let error = build_plan(&f.root, &f.mods).unwrap_err();
+    assert!(format!("{error:?}").contains("E_TARGET_NOT_FOUND"));
+}
