@@ -760,6 +760,10 @@ fn edit_manifests(plan: &Plan, files: &mut BTreeMap<String, Vec<u8>>) -> Result<
 /// Insert the crates' packages in Cargo's order and format, and list them in their dependents'
 /// entries, leaving every other byte of the lock as it was.
 fn edit_lock(lock: &str, crates: &[PlannedCrate]) -> Result<String> {
+    // A CRLF checkout (Git for Windows' core.autocrlf): edit it with LF, then give its endings back.
+    if lock.contains("\r\n") {
+        return Ok(edit_lock(&lock.replace("\r\n", "\n"), crates)?.replace('\n', "\r\n"));
+    }
     let bad = |m: &str| Diagnostic::new("E_CRATE", m.to_string()).file("Cargo.lock");
     let mut chunks: Vec<String> = lock.split("\n\n").map(str::to_string).collect();
     let field = |block: &str, key: &str| {
