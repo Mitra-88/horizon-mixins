@@ -474,3 +474,26 @@ fn crates_need_a_bundle_directory() {
     .unwrap();
     failure(&f, "E_CRATE");
 }
+#[test]
+fn a_crlf_checkout_stages_and_builds() {
+    // Git for Windows' core.autocrlf checks the workspace out with CRLF.
+    let f = fixture();
+    for name in [
+        "Cargo.lock",
+        "Cargo.toml",
+        "game/Cargo.toml",
+        "driver/Cargo.toml",
+        "native-hooks.json",
+    ] {
+        let path = f.root.join(name);
+        let text = fs::read_to_string(&path).unwrap();
+        fs::write(path, text.replace('\n', "\r\n")).unwrap();
+    }
+    assert_eq!(f.run("check")["crates"], 1);
+    let lock = fs::read_to_string(f.out.join("Cargo.lock")).unwrap();
+    assert!(lock.contains("name = \"boost-engine\"\r\n"), "{lock}");
+    assert!(
+        !lock.replace("\r\n", "").contains('\n'),
+        "the lock keeps CRLF"
+    );
+}
