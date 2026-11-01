@@ -379,7 +379,7 @@ pub fn build_staged(workspace: &Path, mods: &Path) -> Result<(Plan, crate::nativ
                 )
                 .file(&module.file)
             })?;
-            if index::cfg(&tree.attrs) {
+            if index::cfg_status(&tree.attrs) != index::CfgStatus::Active {
                 return Err(Diagnostic::new(
                     "E_UNSUPPORTED_CFG",
                     "support module destination has unresolved cfg",

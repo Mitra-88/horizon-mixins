@@ -116,13 +116,14 @@ public when cross-crate access is needed.
 It adds no Cargo dependencies or fields to existing structs. IDs are unique
 across injections, bridges and modules in a bundle.
 
-The destination must have exactly one unconditional source identity. Existing
-type/module/import names, competing module names and unresolved glob imports
-are rejected. Payloads are parsed during planning. External `mod`, `#[path]`,
-direct include macros, file attributes and shebangs are unsupported; assemble
-multi-file mod implementations into a self-contained payload before planning.
-Ordinary Rust macros and cfg inside new implementation code are compiled by
-Cargo; injected helpers are never matched against that code.
+The destination must have exactly one production source identity. The index treats
+`cfg(not(test))` as active and `cfg(test)` as inactive. Other cfg predicates
+remain unresolved. Existing type/module/import names, competing module names
+and unresolved glob imports are rejected. Payloads are parsed during planning.
+External `mod`, `#[path]`, direct include macros, file attributes and shebangs
+are unsupported; assemble multi-file mod implementations into a self-contained
+payload before planning. Ordinary Rust macros and cfg inside new implementation code
+are compiled by Cargo; injected helpers are never matched against that code.
 
 Plans contain module identity/version, destination fingerprint and source, plus
 `visibility = "pub"` for public modules. Omitted plan visibility means

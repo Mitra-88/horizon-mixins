@@ -55,6 +55,34 @@ pub fn cfg(attrs: &[Attribute]) -> bool {
         .any(|a| a.path().is_ident("cfg") || a.path().is_ident("cfg_attr"))
 }
 
+#[derive(PartialEq, Eq)]
+pub(crate) enum CfgStatus {
+    Active,
+    Inactive,
+    Unknown,
+}
+
+pub(crate) fn cfg_status(attrs: &[Attribute]) -> CfgStatus {
+    let mut status = CfgStatus::Active;
+    for attr in attrs {
+        if attr.path().is_ident("cfg_attr") {
+            status = CfgStatus::Unknown;
+        } else if attr.path().is_ident("cfg") {
+            let predicate = attr.parse_args::<syn::Meta>();
+            match predicate {
+                Ok(syn::Meta::Path(path)) if path.is_ident("test") => return CfgStatus::Inactive,
+                Ok(syn::Meta::List(list))
+                    if list.path.is_ident("not")
+                        && list
+                            .parse_args::<syn::Path>()
+                            .is_ok_and(|path| path.is_ident("test")) => {}
+                _ => status = CfgStatus::Unknown,
+            }
+        }
+    }
+    status
+}
+
 pub fn macro_attributes(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|a| {
         let Some(name) = a.path().get_ident() else {
@@ -221,6 +249,11 @@ impl Index {
             .replace('\\', "/");
         let tree = syn::parse_file(&fs::read_to_string(&path).map_err(io)?)
             .map_err(|e| Diagnostic::new("E_RUST_SYNTAX", e.to_string()).file(&path))?;
+        let file_cfg = cfg_status(&tree.attrs);
+        if file_cfg == CfgStatus::Inactive {
+            active.remove(&path);
+            return Ok(());
+        }
         self.items(
             root,
             &tree.items,
@@ -228,7 +261,7 @@ impl Index {
             prefix,
             module_dir,
             &[],
-            inherited_cfg || cfg(&tree.attrs),
+            inherited_cfg || file_cfg == CfgStatus::Unknown,
             active,
         )?;
         if macro_attributes(&tree.attrs) {
@@ -258,21 +291,31 @@ impl Index {
             let mut node = parent.to_vec();
             node.push(i);
             match item {
-                Item::Fn(f) => self.functions.push(Function {
-                    id: format!("{prefix}::{}", f.sig.ident),
-                    module: prefix.into(),
-                    file: file.into(),
-                    node,
-                    signature: f.sig.clone(),
-                    block: *f.block.clone(),
-                    unsupported_cfg: inherited_cfg || cfg(&f.attrs),
-                    unsupported_macro: macro_attributes(&f.attrs),
-                    generic_impl: false,
-                    self_type: None,
-                }),
+                Item::Fn(f) => {
+                    let status = cfg_status(&f.attrs);
+                    if status == CfgStatus::Inactive {
+                        continue;
+                    }
+                    self.functions.push(Function {
+                        id: format!("{prefix}::{}", f.sig.ident),
+                        module: prefix.into(),
+                        file: file.into(),
+                        node,
+                        signature: f.sig.clone(),
+                        block: *f.block.clone(),
+                        unsupported_cfg: inherited_cfg || status == CfgStatus::Unknown,
+                        unsupported_macro: macro_attributes(&f.attrs),
+                        generic_impl: false,
+                        self_type: None,
+                    })
+                }
                 Item::Mod(m) => {
                     let next = format!("{prefix}::{}", m.ident);
-                    let uncertain = inherited_cfg || cfg(&m.attrs);
+                    let status = cfg_status(&m.attrs);
+                    if status == CfgStatus::Inactive {
+                        continue;
+                    }
+                    let uncertain = inherited_cfg || status == CfgStatus::Unknown;
                     if macro_attributes(&m.attrs) {
                         self.macro_modules.insert(format!("@{next}"));
                         continue;
@@ -360,6 +403,10 @@ impl Index {
                     }
                 }
                 Item::Impl(imp) => {
+                    let status = cfg_status(&imp.attrs);
+                    if status == CfgStatus::Inactive {
+                        continue;
+                    }
                     let mut identity_type = *imp.self_ty.clone();
                     struct Lifetimes;
                     impl syn::visit_mut::VisitMut for Lifetimes {
@@ -378,6 +425,10 @@ impl Index {
                     };
                     for (j, member) in imp.items.iter().enumerate() {
                         if let syn::ImplItem::Fn(f) = member {
+                            let method_status = cfg_status(&f.attrs);
+                            if method_status == CfgStatus::Inactive {
+                                continue;
+                            }
                             let mut node = node.clone();
                             node.push(j);
                             self.functions.push(Function {
@@ -387,7 +438,9 @@ impl Index {
                                 node,
                                 signature: f.sig.clone(),
                                 block: f.block.clone(),
-                                unsupported_cfg: inherited_cfg || cfg(&imp.attrs) || cfg(&f.attrs),
+                                unsupported_cfg: inherited_cfg
+                                    || status == CfgStatus::Unknown
+                                    || method_status == CfgStatus::Unknown,
                                 unsupported_macro: macro_attributes(&imp.attrs)
                                     || macro_attributes(&f.attrs),
                                 generic_impl: imp
@@ -402,6 +455,10 @@ impl Index {
                     }
                 }
                 Item::Struct(item) => {
+                    let status = cfg_status(&item.attrs);
+                    if status == CfgStatus::Inactive {
+                        continue;
+                    }
                     let attrs: Vec<_> = item
                         .attrs
                         .iter()
@@ -418,7 +475,7 @@ impl Index {
                         file: file.into(),
                         node,
                         item: item.clone(),
-                        unsupported_cfg: inherited_cfg || cfg(&item.attrs),
+                        unsupported_cfg: inherited_cfg || status == CfgStatus::Unknown,
                         unsupported_macro: macro_attributes(&attrs),
                     });
                 }
@@ -519,4 +576,41 @@ pub fn parameters(sig: &Signature) -> Result<BTreeSet<String>> {
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CfgStatus, cfg_status};
+    use syn::parse_quote;
+
+    #[test]
+    fn production_cfg_recognizes_only_exact_test_predicates() {
+        assert!(matches!(
+            cfg_status(&[parse_quote!(#[cfg(not(test))])]),
+            CfgStatus::Active
+        ));
+        assert!(matches!(
+            cfg_status(&[parse_quote!(#[cfg(test)])]),
+            CfgStatus::Inactive
+        ));
+        assert!(matches!(
+            cfg_status(&[parse_quote!(#[cfg(feature = "x")])]),
+            CfgStatus::Unknown
+        ));
+        assert!(matches!(
+            cfg_status(&[parse_quote!(#[cfg_attr(test, inline)])]),
+            CfgStatus::Unknown
+        ));
+        assert!(matches!(
+            cfg_status(&[parse_quote!(#[cfg(not(any(test)))])]),
+            CfgStatus::Unknown
+        ));
+        assert!(matches!(
+            cfg_status(&[
+                parse_quote!(#[cfg(feature = "x")]),
+                parse_quote!(#[cfg(test)])
+            ]),
+            CfgStatus::Inactive
+        ));
+    }
 }
